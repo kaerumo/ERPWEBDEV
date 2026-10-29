@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ITPC — Status report</title>
+    <link rel="icon" type="image/png" href="assets/favicon.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Chakra+Petch:ital,wght@0,500;0,600;0,700;1,600;1,700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="css/style.css" />
+  </head>
+  <body class="report-page">
+    <!-- Screen-only toolbar: hidden when printing -->
+    <div class="report-toolbar no-print">
+      <a class="btn btn-secondary" href="dashboard.html">&larr; Back to dashboard</a>
+      <button type="button" class="btn btn-primary" id="printBtn">
+        Print / Save as PDF
+      </button>
+    </div>
+
+    <!-- Everything inside .report is drawn by main.js from the saved data.
+       The report is always light-themed so it prints cleanly. -->
+    <main class="report" id="report">
+      <header class="report-head">
+        <img src="assets/itpc-logo.png" alt="" width="56" height="56" />
+        <div>
+          <h1>ITPC Status Report</h1>
+          <p id="reportMeta"></p>
+        </div>
+      </header>
+
+      <section class="report-stats" id="reportStats" aria-label="Summary"></section>
+
+      <section>
+        <h2>Low stock alerts</h2>
+        <div id="reportLow"></div>
+      </section>
+
+      <section>
+        <h2>Inventory</h2>
+        <div id="reportInventory"></div>
+      </section>
+
+      <section>
+        <h2>Officers</h2>
+        <div id="reportOfficers"></div>
+      </section>
+
+      <section>
+        <h2>Upcoming events</h2>
+        <div id="reportEvents"></div>
+      </section>
+
+      <footer class="report-foot">
+        Generated from the data saved in this browser. ITPC Program Council ERP.
+      </footer>
+    </main>
+
+    <script src="js/main.js"></script>
+  </body>
+</html>
