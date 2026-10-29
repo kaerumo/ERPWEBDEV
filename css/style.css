@@ -1,0 +1,2076 @@
+/* ==========================================================================
+   ITPC ERP — Stylesheet
+   Colors are taken from the DLSUD ITPC Facebook page (red banner, charcoal
+   profile area, brushed-steel lettering).
+
+   Sections: 1 Tokens & base · 2 Typography · 3 Layout · 4 Sidebar ·
+   5 Buttons & forms · 6 Cards & panels · 7 Toolbar · 8 Table ·
+   9 Dashboard widgets · 10 Toast & modals · 11 Login · 12 Motion ·
+   13 Responsive
+   ========================================================================== */
+
+/* ---------- 1. Tokens & base ----------
+   Every color lives here as a CSS variable. To re-theme the site, change
+   these values only — nothing else in the file has a hardcoded color
+   (except a few rgba() shadows). */
+:root {
+  /* Brand palette (sampled from the ITPC page) */
+  --crimson: #b62021; /* main red of the banner */
+  --crimson-bright: #da434c; /* highlight red, hover states */
+  --maroon: #470509; /* deep red, backgrounds & glows */
+
+  --ink: #161718; /* page background */
+  --charcoal: #232527; /* panels (same dark as the FB profile area) */
+  --charcoal-raised: #2c2f32; /* inputs, hovered rows */
+  --line: #3a3d42; /* borders and dividers */
+
+  --steel: #9a9ea3; /* muted text (the brushed-metal gray) */
+  --steel-light: #c9ccd0;
+  --text: #f1f2f3;
+
+  --ok: #56b587; /* "In Stock" / "Active" */
+  --ok-soft: rgba(86, 181, 135, 0.14);
+  --danger-soft: rgba(218, 67, 76, 0.16);
+
+  /* Fonts. Chakra Petch is the closest free match to the angular, italic
+     lettering on the ITPC banner. Barlow is the readable body font. */
+  --font-display: "Chakra Petch", "Bahnschrift", "Segoe UI", Arial, sans-serif;
+  --font-body: "Barlow", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+
+  --radius: 4px;
+  --sidebar-width: 244px;
+  --transition: 0.18s ease;
+
+  /* Tokens for colors that used to be hardcoded (so light mode can change them) */
+  --hover-text: #ffffff;
+  --hover-bg: rgba(255, 255, 255, 0.05);
+  --placeholder: #6b6f75;
+  --on-accent: #ffffff; /* text that sits on crimson/maroon */
+  --login-card-bg: rgba(35, 37, 39, 0.92);
+  --login-wash: linear-gradient(
+    160deg,
+    #6d0c12 0%,
+    var(--maroon) 40%,
+    var(--ink) 100%
+  );
+  --wordmark-grad: linear-gradient(
+    180deg,
+    #f3f4f5 0%,
+    #8d9095 52%,
+    #cfd1d4 100%
+  );
+
+  color-scheme: dark; /* makes native dropdowns, scrollbars, number spinners dark */
+}
+
+/* Light theme: only the variables change. Toggled by data-theme="light" on <html>. */
+:root[data-theme="light"] {
+  --crimson-bright: #c62830; /* slightly deeper so it's readable on white */
+
+  --ink: #f2f3f5;
+  --charcoal: #ffffff;
+  --charcoal-raised: #eceef1;
+  --line: #d6d9de;
+
+  --steel: #5f646b;
+  --steel-light: #3c4045;
+  --text: #1b1c1e;
+
+  --ok: #2e8f63;
+  --ok-soft: rgba(46, 143, 99, 0.14);
+  --danger-soft: rgba(182, 32, 33, 0.1);
+
+  --hover-text: #111213;
+  --hover-bg: rgba(0, 0, 0, 0.05);
+  --placeholder: #8a8f96;
+  --login-card-bg: rgba(255, 255, 255, 0.94);
+  --login-wash: linear-gradient(
+    160deg,
+    #f4d3d6 0%,
+    #f3e3e4 40%,
+    var(--ink) 100%
+  );
+  --wordmark-grad: linear-gradient(
+    180deg,
+    #4a4d52 0%,
+    #1f2226 52%,
+    #5b5f65 100%
+  );
+
+  color-scheme: light;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-body);
+  color: var(--text);
+  background: var(--ink);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+ul {
+  list-style: none;
+}
+
+img {
+  max-width: 100%;
+  display: block;
+}
+
+button {
+  font-family: inherit;
+}
+
+:focus-visible {
+  outline: 2px solid var(--crimson-bright);
+  outline-offset: 2px;
+}
+
+/* ---------- 2. Typography ----------
+   Headings copy the banner: bold, italic, angular. */
+h1 {
+  font-family: var(--font-display);
+  font-size: 2rem;
+  font-weight: 700;
+  font-style: italic;
+  text-transform: uppercase;
+  letter-spacing: 0.01em;
+  line-height: 1.1;
+}
+
+h2 {
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  font-weight: 600;
+}
+
+h3 {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+
+p,
+label,
+td,
+th {
+  font-size: 0.95rem;
+}
+small {
+  font-size: 0.8rem;
+  color: var(--steel);
+}
+
+/* ---------- 3. App shell layout ---------- */
+.app-shell {
+  display: flex;
+  min-height: 100vh;
+}
+
+.main-content {
+  flex: 1;
+  min-width: 0;
+  padding: 36px 44px 56px;
+  max-width: 1180px;
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-bottom: 28px;
+}
+
+.page-header p {
+  color: var(--steel);
+  margin-top: 6px;
+}
+
+/* The little red bar under each page title echoes the red "2026/2027"
+   blocks on the banner. */
+.page-header h1::after {
+  content: "";
+  display: block;
+  width: 56px;
+  height: 4px;
+  margin-top: 10px;
+  background: var(--crimson);
+  transform: skewX(-25deg);
+}
+
+/* ---------- 4. Sidebar ---------- */
+.sidebar {
+  width: var(--sidebar-width);
+  background: var(--charcoal);
+  border-right: 1px solid var(--line);
+  flex-shrink: 0;
+  padding: 24px 0 20px;
+  display: flex;
+  flex-direction: column;
+  position: sticky;
+  top: 0;
+  height: 100vh; /* stays put while the page content scrolls */
+}
+
+.sidebar-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 22px 22px;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 14px;
+}
+
+.sidebar-brand img {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  box-shadow:
+    0 0 0 2px var(--ink),
+    0 0 0 3px var(--crimson);
+}
+
+.brand-text strong {
+  display: block;
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 1.35rem;
+  line-height: 1;
+  letter-spacing: 0.04em;
+}
+
+.brand-text small {
+  display: block;
+  margin-top: 4px;
+}
+
+.sidebar-nav {
+  flex: 1;
+}
+
+.sidebar-nav li a {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 22px;
+  font-size: 0.98rem;
+  color: var(--steel-light);
+  border-left: 3px solid transparent;
+  transition:
+    background var(--transition),
+    padding-left var(--transition),
+    color var(--transition);
+}
+
+.sidebar-nav li a:hover {
+  background: var(--hover-bg);
+  padding-left: 27px;
+  color: var(--hover-text);
+}
+
+/* main.js adds this class to the link of the page you're on */
+.sidebar-nav li a.is-active {
+  background: linear-gradient(90deg, rgba(182, 32, 33, 0.28), transparent);
+  border-left-color: var(--crimson-bright);
+  color: var(--hover-text);
+  font-weight: 600;
+}
+
+.nav-icon {
+  width: 19px;
+  height: 19px;
+  flex-shrink: 0;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.sidebar-footer {
+  padding: 14px 22px 0;
+  border-top: 1px solid var(--line);
+}
+
+.user-chip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.user-avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--crimson);
+  color: var(--on-accent);
+  font-family: var(--font-display);
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.user-chip strong {
+  display: block;
+  font-size: 0.95rem;
+  line-height: 1.2;
+}
+
+.sidebar-footer a {
+  display: block;
+  padding: 8px 0;
+  font-size: 0.9rem;
+  color: var(--steel);
+  transition: color var(--transition);
+}
+
+.sidebar-footer a:hover {
+  color: var(--crimson-bright);
+}
+
+/* ---------- 5. Buttons & forms ---------- */
+.btn {
+  display: inline-block;
+  padding: 10px 20px;
+  border-radius: var(--radius);
+  border: 1px solid transparent;
+  font-family: var(--font-display);
+  font-size: 0.9rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+  transition:
+    background var(--transition),
+    transform var(--transition),
+    box-shadow var(--transition),
+    border-color var(--transition);
+}
+
+.btn:hover {
+  transform: translateY(-1px);
+}
+.btn:active {
+  transform: translateY(0);
+}
+
+.btn-primary {
+  background: var(--crimson);
+  color: #ffffff;
+}
+
+.btn-primary:hover {
+  background: var(--crimson-bright);
+  box-shadow: 0 4px 16px rgba(218, 67, 76, 0.35);
+}
+
+.btn-secondary {
+  background: transparent;
+  border-color: var(--line);
+  color: var(--steel-light);
+}
+
+.btn-secondary:hover {
+  border-color: var(--steel);
+  color: var(--hover-text);
+}
+
+.form-field {
+  margin-bottom: 18px;
+}
+
+.form-field label {
+  display: block;
+  margin-bottom: 6px;
+  font-weight: 600;
+  color: var(--steel-light);
+}
+
+.form-field input,
+.form-field select {
+  width: 100%;
+  padding: 11px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  font-family: inherit;
+  font-size: 0.98rem;
+  color: var(--text);
+  background: var(--ink);
+  transition:
+    border-color var(--transition),
+    box-shadow var(--transition);
+}
+
+.form-field input::placeholder {
+  color: var(--placeholder);
+}
+
+.form-field input:focus,
+.form-field select:focus {
+  outline: none;
+  border-color: var(--crimson-bright);
+  box-shadow: 0 0 0 3px rgba(218, 67, 76, 0.25);
+}
+
+.form-error {
+  color: var(--crimson-bright);
+  font-size: 0.88rem;
+  margin-bottom: 12px;
+}
+
+/* Hidden by default; body.is-admin (set by JS after login) reveals them.
+   Using a body class means rows created later by JS are covered too. */
+.admin-only {
+  display: none !important;
+}
+
+body.is-admin .admin-only {
+  display: inline-block !important;
+}
+
+/* ---------- Theme toggle ---------- */
+.theme-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.9rem;
+  color: var(--steel);
+  transition: color var(--transition);
+}
+
+.theme-toggle:hover {
+  color: var(--crimson-bright);
+}
+
+.theme-toggle svg {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* Dark mode shows "Light mode" (sun); light mode shows "Dark mode" (moon) */
+.theme-toggle .to-dark {
+  display: none;
+}
+:root[data-theme="light"] .theme-toggle .to-light {
+  display: none;
+}
+:root[data-theme="light"] .theme-toggle .to-dark {
+  display: inline-block;
+}
+
+/* Login page: floating button, top-right */
+.login-screen .theme-toggle {
+  position: absolute;
+  top: 20px;
+  right: 24px;
+  z-index: 2;
+  width: auto;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--login-card-bg);
+  color: var(--steel-light);
+}
+
+/* ---------- 6. Cards & panels ---------- */
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.stat-card {
+  position: relative;
+  background: var(--charcoal);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 20px 20px 18px;
+  overflow: hidden;
+  transition:
+    transform var(--transition),
+    border-color var(--transition);
+}
+
+/* Red corner tab in the top-right of every card */
+.stat-card::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 26px;
+  height: 26px;
+  background: linear-gradient(225deg, var(--crimson) 50%, transparent 50%);
+}
+
+.stat-card:hover {
+  transform: translateY(-3px);
+  border-color: var(--crimson);
+}
+
+.stat-card small {
+  color: var(--steel-light);
+  font-size: 0.85rem;
+}
+
+.stat-card .stat-value {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 2.6rem;
+  font-weight: 700;
+  line-height: 1.1;
+  margin-top: 4px;
+}
+
+.stat-card.alert .stat-value {
+  color: var(--crimson-bright);
+}
+
+.panel {
+  background: var(--charcoal);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 22px 24px;
+  margin-bottom: 24px;
+  overflow-x: auto; /* wide tables scroll inside the panel, not the page */
+}
+
+.panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+/* ---------- 7. Toolbar (search + filters) ---------- */
+.toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.search-wrap {
+  position: relative;
+  flex: 1 1 260px;
+  max-width: 360px;
+}
+
+.search-wrap input {
+  width: 100%;
+  padding-right: 38px; /* room for the "/" hint */
+}
+
+/* Small "/" key hint inside the search box (press / to focus it) */
+.search-wrap kbd {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-family: var(--font-display);
+  font-size: 0.78rem;
+  color: var(--steel);
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  padding: 0 6px;
+  pointer-events: none;
+}
+
+.toolbar-filters {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.toolbar input,
+.toolbar-filters select {
+  padding: 9px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  font-family: inherit;
+  font-size: 0.92rem;
+  color: var(--text);
+  background: var(--charcoal);
+  transition:
+    border-color var(--transition),
+    box-shadow var(--transition);
+}
+
+.toolbar input:focus,
+.toolbar-filters select:focus {
+  outline: none;
+  border-color: var(--crimson-bright);
+  box-shadow: 0 0 0 3px rgba(218, 67, 76, 0.25);
+}
+
+.result-count {
+  font-size: 0.85rem;
+  color: var(--steel);
+  margin: 0 4px;
+}
+
+/* ---------- 8. Table ---------- */
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+thead th {
+  text-align: left;
+  padding: 10px 12px;
+  color: var(--steel);
+  border-bottom: 2px solid var(--crimson);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* Sortable headers: JS sets aria-sort to "ascending" / "descending" */
+thead th[data-sort] {
+  cursor: pointer;
+  user-select: none;
+  transition: color var(--transition);
+}
+
+thead th[data-sort]:hover {
+  color: var(--hover-text);
+}
+
+thead th[data-sort]::after {
+  content: " \2195";
+  opacity: 0.35;
+}
+
+thead th[aria-sort="ascending"]::after {
+  content: " \2191";
+  opacity: 1;
+  color: var(--crimson-bright);
+}
+
+thead th[aria-sort="descending"]::after {
+  content: " \2193";
+  opacity: 1;
+  color: var(--crimson-bright);
+}
+
+tbody td {
+  padding: 13px 12px;
+  border-bottom: 1px solid var(--line);
+  vertical-align: middle;
+}
+
+tbody tr {
+  transition:
+    background var(--transition),
+    box-shadow var(--transition);
+}
+
+/* A red bar slides in on the left of the row you hover */
+tbody tr:hover {
+  background: var(--charcoal-raised);
+  box-shadow: inset 3px 0 0 var(--crimson);
+}
+
+tbody td a {
+  color: var(--crimson-bright);
+  font-weight: 600;
+  margin-right: 12px;
+  white-space: nowrap;
+}
+
+tbody td a:hover {
+  text-decoration: underline;
+}
+
+tbody td a.delete-link {
+  color: var(--steel);
+}
+tbody td a.delete-link:hover {
+  color: var(--crimson-bright);
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 3px 11px;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.status-ok {
+  background: var(--ok-soft);
+  color: var(--ok);
+}
+
+.status-low {
+  background: var(--danger-soft);
+  color: var(--crimson-bright);
+}
+
+/* Quantity cell: number + small bar showing how full the stock is */
+.qty-cell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.qty-cell b {
+  min-width: 2ch;
+  font-weight: 600;
+}
+
+.meter {
+  flex: 1;
+  min-width: 56px;
+  max-width: 110px;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--ink);
+  overflow: hidden;
+}
+
+.meter > i {
+  display: block;
+  height: 100%;
+  background: var(--ok);
+  border-radius: 3px;
+  transition: width 0.6s ease;
+}
+
+.meter.is-low > i {
+  background: var(--crimson-bright);
+}
+
+/* Name cell on the Officers page: round initials + name */
+.person {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.person .user-avatar {
+  width: 34px;
+  height: 34px;
+  font-size: 0.85rem;
+  background: var(--maroon);
+  border: 1px solid var(--crimson);
+}
+
+.empty-state {
+  text-align: center;
+  padding: 36px 12px 12px;
+  color: var(--steel);
+}
+
+.empty-state strong {
+  display: block;
+  color: var(--text);
+  font-size: 1rem;
+  margin-bottom: 4px;
+}
+
+/* ---------- 9. Dashboard widgets ---------- */
+.dash-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px;
+}
+
+.dash-grid .panel {
+  margin-bottom: 0;
+}
+
+.quick-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* Horizontal bar rows (stock levels, officers per committee) */
+.bar-list li {
+  margin-bottom: 14px;
+}
+
+.bar-list li:last-child {
+  margin-bottom: 0;
+}
+
+.bar-label {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 0.9rem;
+  margin-bottom: 5px;
+}
+
+.bar-label span:last-child {
+  color: var(--steel);
+  font-variant-numeric: tabular-nums;
+}
+
+.bar-track {
+  height: 8px;
+  background: var(--ink);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.bar-track > i {
+  display: block;
+  height: 100%;
+  width: 0; /* JS sets the real width after load so the bar grows in */
+  background: var(--steel);
+  border-radius: 4px;
+  transition: width 0.8s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.bar-track > i.is-low {
+  background: var(--crimson-bright);
+}
+.bar-track > i.is-ok {
+  background: var(--ok);
+}
+
+.activity-list li {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 11px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 0.93rem;
+}
+
+.activity-list li:last-child {
+  border-bottom: none;
+}
+
+/* Colored dot = type of action (add / edit / delete) */
+.activity-dot {
+  width: 9px;
+  height: 9px;
+  margin-top: 7px;
+  border-radius: 50%;
+  background: var(--steel);
+  flex-shrink: 0;
+}
+
+.activity-dot.is-add {
+  background: var(--ok);
+}
+.activity-dot.is-delete {
+  background: var(--crimson-bright);
+}
+
+.activity-list span.msg {
+  flex: 1;
+}
+
+.activity-list time {
+  color: var(--steel);
+  font-size: 0.8rem;
+  white-space: nowrap;
+  margin-top: 2px;
+}
+
+/* ---------- 10. Toast & modals ---------- */
+.toast {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  background: var(--charcoal-raised);
+  color: var(--text);
+  padding: 13px 18px;
+  border-radius: var(--radius);
+  border-left: 4px solid var(--crimson);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  font-size: 0.93rem;
+  opacity: 0;
+  transform: translateY(10px);
+  transition:
+    opacity 0.2s ease,
+    transform 0.2s ease;
+  pointer-events: none;
+  z-index: 200;
+}
+
+.toast.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 10, 11, 0.72);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  z-index: 100;
+}
+
+.modal-overlay.is-open {
+  display: flex;
+  animation: fade-in 0.15s ease;
+}
+
+.modal-box {
+  position: relative;
+  background: var(--charcoal);
+  border: 1px solid var(--line);
+  border-top: 4px solid var(--crimson);
+  border-radius: var(--radius);
+  padding: 28px;
+  width: 100%;
+  max-width: 440px;
+  max-height: 88vh;
+  overflow-y: auto;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.55);
+}
+
+.modal-overlay.is-open .modal-box {
+  animation: pop-in 0.2s ease;
+}
+
+.modal-box h2 {
+  margin-bottom: 16px;
+  padding-right: 28px;
+}
+
+.modal-box li {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.modal-box li span:first-child {
+  color: var(--steel);
+}
+
+.modal-close {
+  position: absolute;
+  top: 14px;
+  right: 16px;
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  line-height: 1;
+  cursor: pointer;
+  color: var(--steel);
+  transition: color var(--transition);
+}
+
+.modal-close:hover {
+  color: var(--hover-text);
+}
+
+.modal-box form .btn-primary {
+  width: 100%;
+  margin-top: 4px;
+}
+
+/* ---------- 11. Login page ----------
+   The one "wow" screen: a comic-panel background (like the ITPC banner) with
+   a red spotlight that follows your mouse. main.js updates --mx / --my. */
+.login-screen {
+  position: relative;
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 1.15fr 1fr;
+  align-items: center;
+  gap: 40px;
+  padding: 40px 6vw;
+  overflow: hidden;
+  background: var(--ink);
+  --mx: 30%;
+  --my: 35%;
+}
+
+.login-bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background:
+    /* the spotlight that follows the cursor */
+    radial-gradient(
+      520px circle at var(--mx) var(--my),
+      rgba(218, 67, 76, 0.75),
+      transparent 72%
+    ),
+    /* thin diagonal "panel edges" like the comic collage on the banner */
+    linear-gradient(
+        115deg,
+        transparent 0 30%,
+        rgba(255, 255, 255, 0.07) 30% 30.25%,
+        transparent 30.25% 62%,
+        rgba(255, 255, 255, 0.05) 62% 62.2%,
+        transparent 62.2%
+      ),
+    linear-gradient(
+      65deg,
+      transparent 0 45%,
+      rgba(255, 255, 255, 0.05) 45% 45.2%,
+      transparent 45.2% 80%,
+      rgba(255, 255, 255, 0.06) 80% 80.25%,
+      transparent 80.25%
+    ),
+    /* base red-to-black wash */ var(--login-wash);
+}
+
+.login-hero,
+.login-card {
+  position: relative;
+  z-index: 1;
+}
+
+.hero-logo {
+  width: 112px;
+  height: 112px;
+  border-radius: 50%;
+  box-shadow:
+    0 0 0 4px var(--charcoal),
+    0 0 0 6px var(--crimson),
+    0 18px 40px rgba(0, 0, 0, 0.5);
+  margin-bottom: 26px;
+}
+
+/* Brushed-steel gradient text, like the banner lettering */
+.wordmark {
+  font-size: clamp(3.5rem, 9vw, 7rem);
+  line-height: 0.95;
+  padding-right: 0.08em; /* italic text overhangs; this stops the last letter clipping */
+  background: var(--wordmark-grad);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.wordmark::after {
+  display: none;
+}
+
+.hero-name {
+  margin-top: 14px;
+  font-family: var(--font-display);
+  font-size: clamp(1.1rem, 2.2vw, 1.6rem);
+  font-weight: 600;
+  font-style: italic;
+  text-transform: uppercase;
+  color: var(--steel-light);
+  max-width: 22ch;
+}
+
+.hero-school {
+  margin-top: 16px;
+  color: var(--steel);
+}
+
+/* Red year tags copied from the banner: "2026" over "2027" */
+.year-tags {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 3px;
+  margin-top: 22px;
+}
+
+.year-tags span {
+  background: var(--crimson);
+  color: var(--on-accent);
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.95rem;
+  padding: 1px 12px;
+  letter-spacing: 0.06em;
+}
+
+.login-card {
+  justify-self: center;
+  width: 100%;
+  max-width: 400px;
+  background: var(--login-card-bg);
+  border: 1px solid var(--line);
+  border-top: 4px solid var(--crimson);
+  padding: 36px 34px 30px;
+  border-radius: var(--radius);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5);
+}
+
+.login-card h2 {
+  font-size: 1.5rem;
+  margin-bottom: 4px;
+}
+
+.login-card > p {
+  color: var(--steel);
+  margin-bottom: 24px;
+}
+
+.login-card .btn-primary {
+  width: 100%;
+  padding: 13px;
+  margin-top: 4px;
+}
+
+/* Password box with a Show/Hide button inside it */
+.password-wrap {
+  position: relative;
+}
+.password-wrap input {
+  padding-right: 64px;
+}
+
+.toggle-password {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: var(--steel);
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 6px 8px;
+  cursor: pointer;
+}
+
+.toggle-password:hover {
+  color: var(--hover-text);
+}
+
+/* Demo account shortcuts: click to fill the form (handy when presenting) */
+.demo-accounts {
+  margin-top: 20px;
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+}
+
+.demo-accounts small {
+  display: block;
+  margin-bottom: 10px;
+}
+
+.demo-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.demo-buttons .btn {
+  flex: 1;
+  padding: 8px 10px;
+  font-size: 0.85rem;
+}
+
+/* Wrong password: the card shakes once */
+.login-card.is-shaking {
+  animation: shake 0.4s ease;
+}
+
+/* ---------- 9b. Events & calendar ---------- */
+:root {
+  --ev-meeting: var(--crimson-bright);
+  --ev-workshop: var(--ok);
+  --ev-seminar: #5b9bd5;
+  --ev-social: #e0a63a;
+}
+
+/* Textareas and side-by-side fields share the form-field look */
+.form-field textarea {
+  width: 100%;
+  padding: 11px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  font-family: inherit;
+  font-size: 0.98rem;
+  color: var(--text);
+  background: var(--ink);
+  resize: vertical;
+  transition:
+    border-color var(--transition),
+    box-shadow var(--transition);
+}
+
+.form-field textarea:focus {
+  outline: none;
+  border-color: var(--crimson-bright);
+  box-shadow: 0 0 0 3px rgba(218, 67, 76, 0.25);
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+/* .btn sets display, which would otherwise beat the hidden attribute */
+.btn[hidden] {
+  display: none;
+}
+
+.events-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+
+.events-layout .panel {
+  margin-bottom: 0;
+}
+
+.cal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.cal-nav {
+  display: flex;
+  gap: 6px;
+}
+
+.cal-nav .btn {
+  padding: 6px 12px;
+}
+
+.cal-weekdays,
+.cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.cal-weekdays span {
+  text-align: center;
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--steel);
+  padding-bottom: 6px;
+}
+
+.cal-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: space-between;
+  min-height: 68px;
+  padding: 6px 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--ink);
+  color: var(--text);
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background var(--transition),
+    border-color var(--transition);
+}
+
+.cal-cell.is-empty {
+  background: transparent;
+  border-color: transparent;
+  cursor: default;
+}
+
+.cal-cell:not(.is-empty):hover {
+  background: var(--charcoal-raised);
+  border-color: var(--steel);
+}
+
+.cal-cell.is-today {
+  border-color: var(--crimson-bright);
+}
+
+.cal-cell.is-today .cal-day {
+  background: var(--crimson);
+  color: var(--on-accent);
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  margin: -2px 0 0 -4px;
+}
+
+.cal-cell.is-selected {
+  background: var(--charcoal-raised);
+  box-shadow: inset 0 0 0 2px var(--crimson-bright);
+}
+
+.cal-day {
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.cal-dots {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  min-height: 8px;
+}
+
+.cal-dots em {
+  font-style: normal;
+  font-size: 0.7rem;
+  color: var(--steel);
+}
+
+.dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--steel);
+}
+
+.dot.type-meeting {
+  background: var(--ev-meeting);
+}
+.dot.type-workshop {
+  background: var(--ev-workshop);
+}
+.dot.type-seminar {
+  background: var(--ev-seminar);
+}
+.dot.type-social {
+  background: var(--ev-social);
+}
+
+.cal-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-top: 16px;
+  font-size: 0.82rem;
+  color: var(--steel);
+}
+
+.cal-legend li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Event rows: used on the Events page and in the Dashboard widget */
+.event-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.event-item:last-child {
+  border-bottom: none;
+}
+
+.event-item.is-past {
+  opacity: 0.55;
+}
+
+.event-date {
+  flex-shrink: 0;
+  width: 48px;
+  padding: 6px 0;
+  text-align: center;
+  border: 1px solid var(--line);
+  border-top: 3px solid var(--crimson);
+  border-radius: var(--radius);
+  background: var(--ink);
+}
+
+.event-date b {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  line-height: 1;
+}
+
+.event-date span {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--steel);
+}
+
+.event-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.event-info strong {
+  display: block;
+}
+
+.event-info small {
+  display: block;
+  color: var(--steel);
+  margin: 2px 0 6px;
+}
+
+.event-tag {
+  display: inline-block;
+  padding: 1px 9px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  border: 1px solid currentColor;
+}
+
+.event-tag.type-meeting {
+  color: var(--ev-meeting);
+}
+.event-tag.type-workshop {
+  color: var(--ev-workshop);
+}
+.event-tag.type-seminar {
+  color: var(--ev-seminar);
+}
+.event-tag.type-social {
+  color: var(--ev-social);
+}
+
+.event-actions {
+  display: flex;
+  gap: 12px;
+  flex-shrink: 0;
+  font-size: 0.9rem;
+}
+
+.event-actions a {
+  color: var(--crimson-bright);
+  font-weight: 600;
+}
+
+.event-actions a.delete-link {
+  color: var(--steel);
+}
+.event-actions a.delete-link:hover {
+  color: var(--crimson-bright);
+}
+
+/* Dashboard: low stock alert rows */
+.low-list li {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 11px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.low-list li:last-child {
+  border-bottom: none;
+}
+
+.low-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.low-info strong {
+  display: block;
+}
+
+.low-info small {
+  color: var(--steel);
+}
+
+.low-list .meter {
+  flex: 0 0 72px;
+  min-width: 0;
+}
+
+.low-list .status-badge {
+  white-space: nowrap;
+}
+
+@media (max-width: 1000px) {
+  .events-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .cal-cell {
+    min-height: 52px;
+    padding: 4px;
+  }
+  .cal-weekdays span {
+    font-size: 0.68rem;
+  }
+  .form-row {
+    grid-template-columns: 1fr;
+  }
+  .event-item {
+    flex-wrap: wrap;
+  }
+  .event-actions {
+    width: 100%;
+    padding-left: 62px;
+  }
+}
+
+/* ---------- 12. Motion ----------
+   Kept deliberately small: one entrance on the login screen, bars that grow
+   on the dashboard, and hover/click feedback. Everything is switched off for
+   people who ask their device for reduced motion. */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes slide-in-left {
+  from {
+    opacity: 0;
+    transform: translateX(-28px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  20%,
+  60% {
+    transform: translateX(-8px);
+  }
+  40%,
+  80% {
+    transform: translateX(8px);
+  }
+}
+
+.login-hero {
+  animation: slide-in-left 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.login-card {
+  animation: pop-in 0.5s ease 0.25s both;
+}
+
+/* Dashboard stat cards rise in one after the other */
+.stat-grid .stat-card {
+  animation: pop-in 0.4s ease both;
+}
+.stat-grid .stat-card:nth-child(2) {
+  animation-delay: 0.06s;
+}
+.stat-grid .stat-card:nth-child(3) {
+  animation-delay: 0.12s;
+}
+.stat-grid .stat-card:nth-child(4) {
+  animation-delay: 0.18s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+/* ---------- 13. Responsive ---------- */
+@media (max-width: 900px) {
+  .login-screen {
+    grid-template-columns: 1fr;
+    gap: 28px;
+    padding: 32px 20px;
+  }
+
+  .hero-logo {
+    width: 84px;
+    height: 84px;
+    margin-bottom: 16px;
+  }
+  .dash-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .app-shell {
+    flex-direction: column;
+  }
+
+  /* The sidebar turns into a top bar */
+  .sidebar {
+    position: static;
+    width: 100%;
+    height: auto;
+    flex-direction: row;
+    align-items: center;
+    padding: 10px 16px;
+    overflow-x: auto;
+    border-right: none;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .sidebar-brand {
+    border-bottom: none;
+    padding: 0 14px 0 0;
+    margin-bottom: 0;
+    white-space: nowrap;
+  }
+
+  .sidebar-brand img {
+    width: 34px;
+    height: 34px;
+  }
+  .brand-text small {
+    display: none;
+  }
+
+  .sidebar-nav {
+    display: flex;
+  }
+
+  .sidebar-nav li a {
+    padding: 8px 14px;
+    border-left: none;
+    border-bottom: 3px solid transparent;
+    white-space: nowrap;
+  }
+
+  .sidebar-nav li a:hover {
+    padding-left: 14px;
+  }
+
+  .sidebar-nav li a.is-active {
+    background: none;
+    border-bottom-color: var(--crimson-bright);
+  }
+
+  /* Keep Log out reachable: it sits at the end of the top bar */
+  .sidebar-footer {
+    border-top: none;
+    padding: 0 0 0 8px;
+    margin-left: auto;
+    white-space: nowrap;
+  }
+
+  .user-chip {
+    display: none;
+  }
+  .sidebar-footer a {
+    padding: 8px 10px;
+  }
+  .sidebar-footer .theme-toggle {
+    width: auto;
+    padding: 8px 10px;
+  }
+  .theme-toggle span {
+    display: none !important; /* icon only in the top bar */
+  }
+
+  .main-content {
+    padding: 24px 16px 40px;
+  }
+  h1 {
+    font-size: 1.6rem;
+  }
+
+  .search-wrap {
+    max-width: none;
+  }
+  .toast {
+    left: 16px;
+    right: 16px;
+    bottom: 16px;
+  }
+}
+
+@media (max-width: 480px) {
+  .sidebar {
+    padding: 10px 8px;
+  }
+  .sidebar-nav li a {
+    padding: 8px 9px;
+    font-size: 0.85rem;
+  }
+  .sidebar-footer a {
+    padding: 8px;
+    font-size: 0.85rem;
+  }
+  .nav-icon {
+    display: none;
+  }
+  .brand-text {
+    display: none;
+  }
+}
+
+/* Very narrow phones: with 4 nav links the top bar no longer fits in one row.
+   Brand + theme/Log out stay on the first row, the links get their own row. */
+@media (max-width: 400px) {
+  .sidebar {
+    flex-wrap: wrap;
+    row-gap: 4px;
+  }
+  .sidebar-brand {
+    margin-right: auto;
+    padding-right: 0;
+  }
+  .sidebar-footer {
+    order: 2;
+    margin-left: 0;
+    padding-left: 0;
+  }
+  .sidebar-nav {
+    order: 3;
+    width: 100%;
+    justify-content: space-around;
+  }
+}
+
+/* ---------- 9c. Backup panel ---------- */
+.backup-note {
+  color: var(--steel);
+  margin-bottom: 14px;
+  max-width: 70ch;
+}
+
+.backup-note span {
+  color: var(--steel-light);
+  font-weight: 600;
+}
+
+#backupStatus {
+  margin-top: 12px;
+}
+
+/* ---------- 9d. Printable report ----------
+   Always light, whatever theme the app is in, so it prints cleanly. */
+body.report-page {
+  background: #e9eaec;
+  color: #161718;
+}
+
+.report-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  max-width: 860px;
+  margin: 20px auto 0;
+  padding: 0 16px;
+}
+
+.report-toolbar .btn-secondary {
+  background: #ffffff;
+  color: #3c4045;
+  border-color: #c9ccd0;
+}
+
+.report {
+  max-width: 860px;
+  margin: 16px auto 40px;
+  padding: 40px 44px;
+  background: #ffffff;
+  color: #161718;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+.report h1,
+.report h2 {
+  color: #161718;
+}
+
+.report h2 {
+  font-size: 1.05rem;
+  margin: 28px 0 10px;
+  padding-bottom: 6px;
+  border-bottom: 2px solid #b62021;
+  break-after: avoid;
+}
+
+.report-head {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.report-head img {
+  border-radius: 50%;
+}
+
+.report-head h1 {
+  font-size: 1.7rem;
+}
+
+.report-head p {
+  margin-top: 4px;
+  color: #5f646b;
+  font-size: 0.9rem;
+}
+
+.report-stats {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 24px;
+}
+
+.report-stats div {
+  padding: 10px 12px;
+  border: 1px solid #d6d9de;
+  border-top: 3px solid #b62021;
+}
+
+.report-stats b {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  line-height: 1.1;
+}
+
+.report-stats span {
+  font-size: 0.78rem;
+  color: #5f646b;
+}
+
+.report table {
+  font-size: 0.9rem;
+}
+
+.report thead th {
+  padding: 7px 8px;
+  color: #3c4045;
+  border-bottom: 1px solid #8a8f96;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.report tbody td {
+  padding: 7px 8px;
+  border-bottom: 1px solid #e1e3e6;
+  vertical-align: top;
+}
+
+.report tbody tr:hover {
+  background: none;
+  box-shadow: none;
+}
+
+.report .r-low {
+  color: #b62021;
+}
+
+.report-empty {
+  color: #5f646b;
+  font-style: italic;
+}
+
+.report-foot {
+  margin-top: 32px;
+  padding-top: 10px;
+  border-top: 1px solid #d6d9de;
+  font-size: 0.78rem;
+  color: #5f646b;
+}
+
+@media (max-width: 700px) {
+  .report {
+    padding: 24px 18px;
+  }
+  .report-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .report table {
+    display: block;
+    overflow-x: auto;
+  }
+}
+
+@media print {
+  @page {
+    margin: 14mm;
+  }
+  body.report-page {
+    background: #ffffff;
+  }
+  .no-print {
+    display: none !important;
+  }
+  .report {
+    max-width: none;
+    margin: 0;
+    padding: 0;
+    box-shadow: none;
+  }
+  .report-stats {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+  .report table {
+    display: table;
+  }
+  .report thead {
+    display: table-header-group; /* repeat the header on every page */
+  }
+  .report tr {
+    break-inside: avoid;
+  }
+}
+
+/* ---------- 9e. Change log page ---------- */
+.table-scroll {
+  overflow-x: auto;
+}
+
+#logTable th,
+#logTable td {
+  vertical-align: top;
+}
+
+#logTable tbody td {
+  padding: 12px;
+}
+
+.log-when {
+  white-space: nowrap;
+  color: var(--steel-light);
+  font-size: 0.9rem;
+}
+
+.log-role {
+  display: block;
+  color: var(--steel);
+  font-size: 0.78rem;
+}
+
+.log-action {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  background: var(--charcoal-raised);
+  color: var(--steel-light);
+  border: 1px solid var(--line);
+}
+
+.log-action.is-add {
+  background: var(--ok-soft);
+  color: var(--ok);
+  border-color: transparent;
+}
+
+.log-action.is-delete {
+  background: var(--danger-soft);
+  color: var(--crimson-bright);
+  border-color: transparent;
+}
+
+.change-details {
+  margin-top: 6px;
+  font-size: 0.88rem;
+  color: var(--steel-light);
+}
+
+.change-details li {
+  padding: 1px 0;
+  overflow-wrap: anywhere;
+}
+
+.change-details b {
+  color: var(--steel);
+  font-weight: 600;
+}
+
+.change-details del {
+  text-decoration: line-through;
+  color: var(--steel);
+}
+
+.change-details ins {
+  text-decoration: none;
+  color: var(--ok);
+  font-weight: 600;
+}
+
+.log-date {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85rem;
+  color: var(--steel);
+}
+
+.log-date input {
+  padding: 8px 10px;
+}
+
+/* ---------- 9f. Integrity notices ---------- */
+.integrity-banner {
+  margin-bottom: 20px;
+  padding: 12px 16px;
+  border: 1px solid var(--crimson);
+  border-left-width: 4px;
+  border-radius: var(--radius);
+  background: var(--danger-soft);
+  color: var(--text);
+  font-size: 0.92rem;
+}
+
+.log-action.is-integrity {
+  background: var(--danger-soft);
+  color: var(--crimson-bright);
+  border-color: var(--crimson);
+}

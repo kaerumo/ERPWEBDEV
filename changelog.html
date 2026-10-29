@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ITPC — Change log</title>
+    <link rel="icon" type="image/png" href="assets/favicon.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Chakra+Petch:ital,wght@0,500;0,600;0,700;1,600;1,700&display=swap"
+      rel="stylesheet"
+    />
+    <script>
+      document.documentElement.setAttribute(
+        "data-theme",
+        localStorage.getItem("itpc_theme") || "dark",
+      );
+    </script>
+    <link rel="stylesheet" href="css/style.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <!-- Sidebar: identical on every page. main.js adds "is-active" to the
+         link for the current page and fills in the user chip. -->
+      <aside class="sidebar">
+        <a class="sidebar-brand" href="dashboard.html">
+          <img
+            src="assets/itpc-logo.png"
+            alt="ITPC logo"
+            width="42"
+            height="42"
+          />
+          <span class="brand-text">
+            <strong>ITPC</strong>
+            <small>Program Council ERP</small>
+          </span>
+        </a>
+
+        <ul class="sidebar-nav">
+          <li>
+            <a href="dashboard.html"
+              ><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <rect x="3" y="3" width="7" height="9" rx="1" />
+                <rect x="14" y="3" width="7" height="5" rx="1" />
+                <rect x="14" y="12" width="7" height="9" rx="1" />
+                <rect x="3" y="16" width="7" height="5" rx="1" /></svg
+              >Dashboard</a
+            >
+          </li>
+          <li>
+            <a href="inventory.html"
+              ><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M21 8l-9-5-9 5v8l9 5 9-5V8z" />
+                <path d="M3 8l9 5 9-5M12 13v8" /></svg
+              >Inventory</a
+            >
+          </li>
+          <li>
+            <a href="hr.html"
+              ><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <circle cx="9" cy="8" r="3.5" />
+                <path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6" />
+                <circle cx="17" cy="9" r="2.5" />
+                <path d="M17 14c2.8 0 4.5 1.9 4.5 4.5" /></svg
+              >Officers</a
+            >
+          </li>
+          <li>
+            <a href="events.html"
+              ><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <rect x="3" y="5" width="18" height="16" rx="2" />
+                <path d="M3 10h18M8 3v4M16 3v4" /></svg
+              >Events</a
+            >
+          </li>
+          <li>
+            <a href="changelog.html"
+              ><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M3 12a9 9 0 1 0 3-6.7L3 8" />
+                <path d="M3 3v5h5M12 7v5l3 2" /></svg
+              >Change log</a
+            >
+          </li>
+        </ul>
+
+        <div class="sidebar-footer">
+          <div class="user-chip">
+            <span class="user-avatar" id="userAvatar">?</span>
+            <span
+              ><strong id="userName">Guest</strong><small id="userRole"></small
+            ></span>
+          </div>
+          <button
+            type="button"
+            class="theme-toggle"
+            id="themeToggle"
+            aria-pressed="false"
+          >
+            <svg class="to-light" viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="12" cy="12" r="4" />
+              <path
+                d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"
+              />
+            </svg>
+            <svg class="to-dark" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" />
+            </svg>
+            <span class="to-light">Light mode</span>
+            <span class="to-dark">Dark mode</span>
+          </button>
+          <a href="index.html" id="logoutLink">Log out</a>
+        </div>
+      </aside>
+
+      <main class="main-content">
+        <div class="page-header">
+          <div>
+            <h1>Change log</h1>
+            <p>Who changed what, and when. Newest first.</p>
+          </div>
+          <button class="btn btn-secondary" id="logExportBtn">
+            Export CSV
+          </button>
+        </div>
+
+        <div class="toolbar">
+          <div class="search-wrap">
+            <input
+              type="text"
+              id="logSearch"
+              placeholder="Search item, change or person..."
+              aria-label="Search the change log"
+            />
+          </div>
+          <div class="toolbar-filters">
+            <select id="logModule" aria-label="Filter by module">
+              <option value="">All modules</option>
+              <option value="inventory">Inventory</option>
+              <option value="officers">Officers</option>
+              <option value="events">Events</option>
+              <option value="system">System</option>
+            </select>
+            <select id="logAction" aria-label="Filter by action">
+              <option value="">All actions</option>
+              <option value="add">Added</option>
+              <option value="edit">Edited</option>
+              <option value="delete">Deleted</option>
+              <option value="restore">Restored</option>
+              <option value="reset">Reset</option>
+              <option value="integrity">Integrity alert</option>
+            </select>
+            <select id="logUser" aria-label="Filter by person">
+              <option value="">Everyone</option>
+            </select>
+            <label class="log-date"
+              >From <input type="date" id="logFrom" aria-label="From date"
+            /></label>
+            <label class="log-date"
+              >To <input type="date" id="logTo" aria-label="To date"
+            /></label>
+            <button
+              type="button"
+              class="btn btn-secondary"
+              id="logClear"
+              hidden
+            >
+              Clear filters
+            </button>
+            <span class="result-count" id="logCount" aria-live="polite"></span>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="table-scroll">
+            <table id="logTable">
+              <thead>
+                <tr>
+                  <th>When</th>
+                  <th>Who</th>
+                  <th>Module</th>
+                  <th>Action</th>
+                  <th>Change</th>
+                </tr>
+              </thead>
+              <tbody id="logBody"></tbody>
+            </table>
+          </div>
+          <div class="empty-state" id="logEmpty" hidden>
+            <strong>No changes found</strong>
+            <span></span>
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+    <script src="js/auth.js"></script>
+    <script src="js/main.js"></script>
+  </body>
+</html>
