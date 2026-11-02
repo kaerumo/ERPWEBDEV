@@ -638,6 +638,41 @@ body.is-admin .admin-only {
   margin: 0 4px;
 }
 
+.tab-group {
+  display: inline-flex;
+  gap: 4px;
+  padding: 3px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--charcoal-raised);
+}
+
+.tab-btn {
+  border: 1px solid transparent;
+  border-radius: calc(var(--radius) - 2px);
+  padding: 7px 11px;
+  color: var(--steel);
+  background: transparent;
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition:
+    color var(--transition),
+    background var(--transition),
+    border-color var(--transition);
+}
+
+.tab-btn:hover {
+  color: var(--hover-text);
+  border-color: var(--line);
+}
+
+.tab-btn.is-active {
+  color: var(--text);
+  background: var(--crimson);
+  border-color: var(--crimson-bright);
+}
+
 /* ---------- 8. Table ---------- */
 table {
   width: 100%;
