@@ -115,3 +115,108 @@ Known limits (no server)
 - Deleting `itpc_devkey` in DevTools makes the next load count as a first run, so existing data is accepted once and re-sealed
 - Someone who reads the device key from Local Storage can forge a session seal. Real protection against this needs a backend
 - Passwords and the sealing key are only as safe as the browser they run in
+
+Finals preparation
+
+- Inventory records now include a description and a specification/variant field,
+  so entries such as "Pen" can be identified as "Ballpoint, blue ink, 0.7 mm".
+- Delete actions for inventory, officers and events are now soft archives.
+  Archived records appear in `archives.html`, where an administrator can view,
+  restore, or permanently delete them.
+- Event forms reject impossible dates and prevent newly created or rescheduled
+  events from being placed in the past. Existing historical events remain
+  viewable.
+- The current browser storage is intentionally kept as a temporary repository
+  so the UI remains usable while the backend is being selected. The planned
+  Flask/PostgreSQL API should provide resources for `/api/auth`, `/api/users`,
+  `/api/inventory`, `/api/events`, `/api/archives`, and `/api/reports`.
+- When the backend is integrated, move password verification to Flask, store
+  passwords with a server-side password hash, enforce permissions on every API
+  route, validate request schemas on the server, and use PostgreSQL
+  transactions for archive/restore operations.
+- Additional finals-ready features to consider are server-side pagination and
+  search, expanded role permissions, low-stock/event reminders, report
+  exports, and a backend audit log. These are API concerns rather than
+  frontend-only localStorage features.
+
+Backend integration
+
+- A Flask/PostgreSQL API is now available in `backend/`. It owns users,
+  inventory, events, archives, and audit logs, with administrator checks on
+  write operations.
+- Install and run it using [backend/README.md](backend/README.md). Set
+  `itpc_api_url` in browser localStorage to `http://127.0.0.1:5000` before
+  opening the login page to use backend login. If it is not set, the existing
+  localStorage demo mode remains available.
+- `js/api.js` is loaded by the pages and provides the authenticated API client.
+  Login switches to Flask when the API URL is configured. Authenticated pages
+  hydrate inventory, events, and archives from PostgreSQL before rendering,
+  and admin changes synchronize back through protected API endpoints. Officers
+  and audit logs now hydrate from the backend too. Dashboard/report totals use
+  the hydrated data, while dedicated report endpoints remain a future
+  optimization.
+- Flask-Migrate is included for schema migrations. Use `flask --app
+  backend.app db upgrade` and set `AUTO_CREATE_SCHEMA=0` outside local demo
+  mode.
+- Basic backend contract tests are in `backend/tests/`. Run them with
+  `pytest backend/tests`.
+- Deployment is intentionally deferred. The project is currently a full-stack
+  local application with a static frontend, Flask API, and PostgreSQL;
+  confirm with your professor whether hosting is required before adding
+  deployment files or choosing a hosting provider.
+
+Code review guide
+
+You can review the implementation directly in VS Code or GitHub using these
+files:
+
+1. **Frontend entry points**
+   - `index.html` — login page and script loading order.
+   - `js/main.js` — shared frontend logic, page initialization, inventory,
+     events, archives, validation, and localStorage fallback.
+   - `js/auth.js` — browser demo authentication and session behavior.
+   - `js/api.js` — Flask API client used when `itpc_api_url` is configured.
+
+2. **Backend**
+   - `backend/app.py` — Flask application, PostgreSQL models, authentication,
+     role checks, API routes, archive transactions, and audit logging.
+   - `backend/requirements.txt` — Python dependencies.
+   - `backend/.env.example` — database, secret-key, and CORS configuration
+     template.
+   - `backend/README.md` — backend installation and endpoint reference.
+
+3. **Pages affected by the frontend changes**
+   - `inventory.html` — description and specification fields.
+   - `events.html` — event form used by date validation.
+   - `archives.html` — archived-record search, restore, and permanent delete.
+   - `dashboard.html`, `hr.html`, `events.html`, `inventory.html`, and
+     `changelog.html` — Archives navigation links.
+
+Recommended review order:
+
+1. Read this README and `backend/README.md`.
+2. Read the database models and routes in `backend/app.py`.
+3. Review `js/api.js` and the API login branch in `js/main.js`.
+4. Review the localStorage fallback and archive/date-validation logic in
+   `js/main.js`.
+5. Run the syntax checks:
+
+```powershell
+node --check js\main.js
+node --check js\api.js
+py -m py_compile backend\app.py
+git diff --check
+```
+
+The backend is not automatically enabled. To review it through the browser,
+start Flask and set this in the browser console:
+
+```js
+localStorage.setItem("itpc_api_url", "http://127.0.0.1:5000");
+```
+
+To return to the frontend-only demo:
+
+```js
+localStorage.removeItem("itpc_api_url");
+```

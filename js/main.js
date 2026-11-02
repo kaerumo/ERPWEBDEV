@@ -25,6 +25,7 @@ const KEYS = {
   officers: "itpc_officers",
   activity: "itpc_activity",
   events: "itpc_events",
+  archives: "itpc_archives",
   changelog: "itpc_changelog", // full audit trail (who changed what, when)
   lastBackup: "itpc_last_backup", // when a backup was last downloaded (not part of the backup)
 };
@@ -37,26 +38,48 @@ const DEFAULT_INVENTORY = [
     name: "ITPC Org T-Shirts (S-XL)",
     category: "merchandise",
     quantity: 35,
+    description: "Official organization shirt for ITPC members.",
+    specification: "Sizes S to XL; cotton blend",
   },
   {
     id: 2,
     name: "Tarpaulins (event banners)",
     category: "event-materials",
     quantity: 2,
+    description: "Reusable banners for council programs and assemblies.",
+    specification: "3 ft x 6 ft; vinyl",
   },
   {
     id: 3,
     name: "Certificate holders",
     category: "office-supplies",
     quantity: 15,
+    description: "Folder-style holders for certificates and awards.",
+    specification: "A4; red cardstock",
   },
-  { id: 4, name: "ITPC lanyards", category: "merchandise", quantity: 48 },
-  { id: 5, name: "Extension cords", category: "event-materials", quantity: 4 },
+  {
+    id: 4,
+    name: "ITPC lanyards",
+    category: "merchandise",
+    quantity: 48,
+    description: "Branded lanyards for officers and event attendees.",
+    specification: "20 mm polyester; printed",
+  },
+  {
+    id: 5,
+    name: "Extension cords",
+    category: "event-materials",
+    quantity: 4,
+    description: "Power extension cords for event equipment.",
+    specification: "10 m; 4-outlet surge protected",
+  },
   {
     id: 6,
     name: "Bond paper (reams)",
     category: "office-supplies",
     quantity: 12,
+    description: "White paper for forms, reports and printed materials.",
+    specification: "A4; 80 gsm; 500 sheets per ream",
   },
 ];
 
@@ -94,6 +117,25 @@ const DEFAULT_OFFICERS = [
     name: "Sample Officer D",
     position: "committee-head",
     committee: "Logistics",
+    status: "active",
+  },
+];
+
+const MOCK_USERS = [
+  {
+    id: 1,
+    username: "admin",
+    password: "admin123",
+    displayName: "Admin",
+    role: "admin",
+    status: "active",
+  },
+  {
+    id: 2,
+    username: "member",
+    password: "member123",
+    displayName: "Member",
+    role: "member",
     status: "active",
   },
 ];
@@ -194,6 +236,24 @@ function loadData(key, defaults) {
 
 function saveData(key, data) {
   localStorage.setItem(key, JSON.stringify(data));
+  if (typeof ERPApi !== "undefined" && ERPApi.enabled) {
+    ERPApi.persist(key, data).catch((error) => {
+      console.error("Could not synchronize " + key + " with the backend:", error);
+    });
+  }
+}
+
+function archiveRecord(type, record) {
+  const archives = loadData(KEYS.archives, []);
+  archives.unshift({
+    id: nextId(archives),
+    type: type,
+    name: record.name || record.title || "Untitled record",
+    record: JSON.parse(JSON.stringify(record)),
+    archivedAt: new Date().toISOString(),
+    archivedBy: currentUser().name,
+  });
+  saveData(KEYS.archives, archives);
 }
 
 // Next free id = highest id in the list + 1
@@ -317,21 +377,6 @@ function recordChange(module, action, before, after, message) {
 // NOTE: front-end only. This shows how role-based access BEHAVES;
 // it is not real security (anyone can read these passwords here).
 // ============================================================
-const DUMMY_ACCOUNTS = [
-  {
-    username: "admin",
-    password: "admin123",
-    role: "admin",
-    displayName: "Admin",
-  },
-  {
-    username: "member",
-    password: "member123",
-    role: "member",
-    displayName: "Member",
-  },
-];
-
 // sessionStorage is cleared when the tab closes, so it works well for "who is logged in".
 function isLoggedIn() {
   return sessionStorage.getItem("userRole") !== null;
@@ -383,8 +428,24 @@ function setupLoginForm() {
     const username = document.getElementById("username").value.trim();
     const password = passwordInput.value.trim();
 
+    if (ERPApi.enabled) {
+      ERPApi.login(username, password)
+        .then(({ user }) => {
+          sessionStorage.setItem("userRole", user.role);
+          sessionStorage.setItem("userName", user.displayName);
+          window.location.href = "dashboard.html";
+        })
+        .catch((error) => {
+          errorEl.textContent = error.message;
+          errorEl.hidden = false;
+          card.classList.add("is-shaking");
+          setTimeout(() => card.classList.remove("is-shaking"), 400);
+        });
+      return;
+    }
+
     // find() returns the matching account, or undefined if none match
-    const account = DUMMY_ACCOUNTS.find(
+    const account = MOCK_USERS.find(
       (entry) => entry.username === username && entry.password === password,
     );
 
@@ -418,7 +479,7 @@ function setupLoginForm() {
   // "Fill admin" / "Fill member" buttons copy a demo account into the form
   document.querySelectorAll("[data-demo]").forEach((button) => {
     button.addEventListener("click", () => {
-      const account = DUMMY_ACCOUNTS.find(
+      const account = MOCK_USERS.find(
         (entry) => entry.username === button.dataset.demo,
       );
       document.getElementById("username").value = account.username;
@@ -444,6 +505,11 @@ function setupLogout() {
   if (!link) return;
 
   link.addEventListener("click", () => {
+    if (typeof ERPApi !== "undefined" && ERPApi.enabled) {
+      ERPApi.logout().catch((error) => {
+        console.error("Could not log out from the backend:", error);
+      });
+    }
     sessionStorage.removeItem("userRole");
     sessionStorage.removeItem("userName");
   });
@@ -477,6 +543,16 @@ function toDateKey(date) {
 function parseDateKey(key) {
   const parts = key.split("-");
   return new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+}
+
+function isValidDateKey(key) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(key)) return false;
+  const date = parseDateKey(key);
+  return (
+    toDateKey(date) === key &&
+    date.getFullYear() >= 2000 &&
+    date.getFullYear() <= 2100
+  );
 }
 
 // "13:00" -> "1:00 PM"
@@ -713,6 +789,10 @@ function inventoryRowHTML(item, maxQty) {
     " " +
     categoryLabel +
     " " +
+    (item.description || "") +
+    " " +
+    (item.specification || "") +
+    " " +
     item.quantity +
     " " +
     statusLabel
@@ -736,7 +816,7 @@ function inventoryRowHTML(item, maxQty) {
       <td>
         <a href="#" class="view-link">View</a>
         <a href="#" class="edit-link admin-only">Edit</a>
-        <a href="#" class="delete-link admin-only">Delete</a>
+        <a href="#" class="delete-link admin-only">Archive</a>
       </td>
     </tr>`;
 }
@@ -785,6 +865,12 @@ function setupInventoryPage() {
 
     // Fill the fields with the item's values (or clear them when adding)
     document.getElementById("itemName").value = item ? item.name : "";
+    document.getElementById("itemDescription").value = item
+      ? item.description || ""
+      : "";
+    document.getElementById("itemSpecification").value = item
+      ? item.specification || ""
+      : "";
     document.getElementById("itemCategory").value = item
       ? item.category
       : "merchandise";
@@ -809,6 +895,8 @@ function setupInventoryPage() {
     if (link.classList.contains("view-link")) {
       openViewModal("Item details", [
         ["Item name", item.name],
+        ["Description", item.description || "—"],
+        ["Specification / variant", item.specification || "—"],
         ["Category", CATEGORY_LABELS[item.category]],
         ["Quantity", item.quantity],
         [
@@ -826,10 +914,11 @@ function setupInventoryPage() {
     }
 
     if (link.classList.contains("delete-link")) {
-      if (!window.confirm('Delete "' + item.name + '"?')) return;
+      if (!window.confirm('Archive "' + item.name + '"?')) return;
 
       items = items.filter((entry) => entry.id !== id); // keep everything except this one
       saveData(KEYS.inventory, items);
+      archiveRecord("inventory", item);
       recordChange(
         "inventory",
         "delete",
@@ -838,7 +927,7 @@ function setupInventoryPage() {
         'Deleted item "' + item.name + '"',
       );
       render();
-      showToast("Item deleted.");
+      showToast("Item archived.");
     }
   });
 
@@ -852,6 +941,12 @@ function setupInventoryPage() {
     if (!isAdmin()) return;
 
     const name = document.getElementById("itemName").value.trim();
+    const description = document
+      .getElementById("itemDescription")
+      .value.trim();
+    const specification = document
+      .getElementById("itemSpecification")
+      .value.trim();
     const category = document.getElementById("itemCategory").value;
     const quantityText = document.getElementById("itemQuantity").value;
     const quantity = Number(quantityText);
@@ -884,6 +979,8 @@ function setupInventoryPage() {
       const created = {
         id: nextId(items),
         name: name,
+        description: description,
+        specification: specification,
         category: category,
         quantity: quantity,
       };
@@ -901,6 +998,8 @@ function setupInventoryPage() {
       const item = items.find((entry) => entry.id === editingId);
       const before = { ...item }; // copy so the log can show old vs new
       item.name = name;
+      item.description = description;
+      item.specification = specification;
       item.category = category;
       item.quantity = quantity;
       recordChange(
@@ -967,7 +1066,7 @@ function officerRowHTML(officer) {
         <a href="#" class="view-link">View</a>
         <a href="#" class="edit-link admin-only">Edit</a>
         <a href="#" class="toggle-link admin-only">${isActive ? "Deactivate" : "Activate"}</a>
-        <a href="#" class="delete-link admin-only">Delete</a>
+        <a href="#" class="delete-link admin-only">Archive</a>
       </td>
     </tr>`;
 }
@@ -1057,10 +1156,11 @@ function setupOfficersPage() {
     }
 
     if (link.classList.contains("delete-link")) {
-      if (!window.confirm('Delete "' + officer.name + '"?')) return;
+      if (!window.confirm('Archive "' + officer.name + '"?')) return;
 
       officers = officers.filter((entry) => entry.id !== id);
       saveData(KEYS.officers, officers);
+      archiveRecord("officers", officer);
       recordChange(
         "officers",
         "delete",
@@ -1069,7 +1169,7 @@ function setupOfficersPage() {
         'Deleted officer "' + officer.name + '"',
       );
       render();
-      showToast("Officer deleted.");
+      showToast("Officer archived.");
     }
   });
 
@@ -1326,6 +1426,7 @@ function setupDashboard() {
     localStorage.removeItem(KEYS.officers);
     localStorage.removeItem(KEYS.activity);
     localStorage.removeItem(KEYS.events);
+    localStorage.removeItem(KEYS.archives);
     localStorage.removeItem(KEYS.changelog);
     // Start the fresh log with who did the reset
     writeChangeLog("system", "reset", "Demo data reset", []);
@@ -1366,7 +1467,7 @@ function eventCardHTML(event, todayKey) {
       <div class="event-actions">
         <a href="#" class="view-link">View</a>
         <a href="#" class="edit-link admin-only">Edit</a>
-        <a href="#" class="delete-link admin-only">Delete</a>
+        <a href="#" class="delete-link admin-only">Archive</a>
       </div>
     </li>`;
 }
@@ -1513,6 +1614,7 @@ function setupEventsPage() {
     document.getElementById("eventDate").value = event
       ? event.date
       : selectedKey || todayKey;
+    document.getElementById("eventDate").min = todayKey;
     document.getElementById("eventTime").value = event ? event.time : "";
     document.getElementById("eventType").value = event ? event.type : "meeting";
     document.getElementById("eventLocation").value = event
@@ -1545,6 +1647,17 @@ function setupEventsPage() {
 
     if (title === "" || date === "" || location === "") {
       errorEl.textContent = "Title, date and location are required.";
+      errorEl.hidden = false;
+      return;
+    }
+    if (!isValidDateKey(date)) {
+      errorEl.textContent = "Enter a real calendar date.";
+      errorEl.hidden = false;
+      return;
+    }
+    const existingEvent = events.find((entry) => entry.id === editingId);
+    if (date < todayKey && (!existingEvent || existingEvent.date !== date)) {
+      errorEl.textContent = "New or rescheduled events must be today or later.";
       errorEl.hidden = false;
       return;
     }
@@ -1628,9 +1741,10 @@ function setupEventsPage() {
     }
 
     if (link.classList.contains("delete-link")) {
-      if (!window.confirm('Delete "' + item.title + '"?')) return;
+      if (!window.confirm('Archive "' + item.title + '"?')) return;
       events = events.filter((entry) => entry.id !== id);
       saveData(KEYS.events, events);
+      archiveRecord("events", item);
       recordChange(
         "events",
         "delete",
@@ -1639,7 +1753,7 @@ function setupEventsPage() {
         'Deleted event "' + item.title + '"',
       );
       render();
-      showToast("Event deleted.");
+      showToast("Event archived.");
     }
   });
 
@@ -1673,6 +1787,111 @@ function renderUpcomingEvents() {
 // J. BACKUP & RESTORE (JSON)
 // Everything lives in this browser's localStorage, so clearing site data
 // wipes it. "Download backup" saves a .json file; "Restore" loads one back.
+function setupArchivesPage() {
+  const tbody = document.getElementById("archiveTableBody");
+  if (!tbody) return;
+
+  let archives = loadData(KEYS.archives, []);
+  const search = document.getElementById("archiveSearch");
+  const empty = document.getElementById("emptyState");
+  const count = document.getElementById("resultCount");
+  let typeFilter = "";
+
+  function render() {
+    const term = search.value.trim().toLowerCase();
+    const shown = archives.filter((entry) => {
+      const matchesType = !typeFilter || entry.type === typeFilter;
+      const matchesSearch = (entry.name + " " + entry.type)
+        .toLowerCase()
+        .includes(term);
+      return matchesType && matchesSearch;
+    });
+
+    tbody.innerHTML = shown
+      .map(
+        (entry) => `
+          <tr data-id="${entry.id}">
+            <td>${escapeHTML(entry.type)}</td>
+            <td>${escapeHTML(entry.name)}</td>
+            <td>${escapeHTML(formatFullTime(entry.archivedAt))}</td>
+            <td>${escapeHTML(entry.archivedBy || "Unknown")}</td>
+            <td>
+              <a href="#" class="view-link">View</a>
+              <a href="#" class="restore-link admin-only">Restore</a>
+              <a href="#" class="purge-link admin-only">Delete permanently</a>
+            </td>
+          </tr>`,
+      )
+      .join("");
+    empty.hidden = shown.length > 0;
+    count.textContent = "Showing " + shown.length + " of " + archives.length;
+  }
+
+  search.addEventListener("input", render);
+  document.querySelectorAll("[data-archive-tab]").forEach((button) => {
+    button.addEventListener("click", () => {
+      typeFilter = button.dataset.archiveTab;
+      document
+        .querySelectorAll("[data-archive-tab]")
+        .forEach((tab) => tab.classList.toggle("is-active", tab === button));
+      render();
+    });
+  });
+
+  tbody.addEventListener("click", (event) => {
+    const link = event.target.closest("a");
+    if (!link) return;
+    event.preventDefault();
+    const row = link.closest("tr");
+    const entry = archives.find((item) => item.id === Number(row.dataset.id));
+    if (!entry) return;
+
+    if (link.classList.contains("view-link")) {
+      const record = entry.record;
+      openViewModal(entry.name, Object.entries(record).map(([key, value]) => [
+        key.replace(/^\w/, (letter) => letter.toUpperCase()),
+        value === "" || value === null ? "—" : value,
+      ]));
+      return;
+    }
+    if (!isAdmin()) return;
+
+    if (link.classList.contains("restore-link")) {
+      const key = KEYS[entry.type];
+      const defaults =
+        entry.type === "inventory"
+          ? DEFAULT_INVENTORY
+          : entry.type === "officers"
+            ? DEFAULT_OFFICERS
+            : DEFAULT_EVENTS;
+      const current = loadData(key, defaults);
+      if (current.some((record) => record.id === entry.record.id)) {
+        showToast("Cannot restore: that ID is already in use.");
+        return;
+      }
+      current.push(entry.record);
+      saveData(key, current);
+      archives = archives.filter((item) => item.id !== entry.id);
+      saveData(KEYS.archives, archives);
+      recordChange(entry.type, "restore", null, entry.record, 'Restored "' + entry.name + '"');
+      render();
+      showToast("Record restored.");
+      return;
+    }
+
+    if (link.classList.contains("purge-link")) {
+      if (!window.confirm('Delete "' + entry.name + '" permanently?')) return;
+      archives = archives.filter((item) => item.id !== entry.id);
+      saveData(KEYS.archives, archives);
+      recordChange(entry.type, "purge", entry.record, null, 'Permanently deleted "' + entry.name + '"');
+      render();
+      showToast("Archive deleted permanently.");
+    }
+  });
+
+  render();
+}
+
 // A restore REPLACES the current data, so we validate the file first and
 // ask for confirmation.
 // ============================================================
@@ -1700,6 +1919,7 @@ function buildBackup() {
       inventory: loadData(KEYS.inventory, DEFAULT_INVENTORY),
       officers: loadData(KEYS.officers, DEFAULT_OFFICERS),
       events: loadData(KEYS.events, DEFAULT_EVENTS),
+      archives: loadData(KEYS.archives, []),
       activity: loadData(KEYS.activity, []),
       changelog: loadData(KEYS.changelog, []),
     },
@@ -1919,6 +2139,7 @@ function setupBackupPanel() {
       saveData(KEYS.inventory, data.inventory);
       saveData(KEYS.officers, data.officers);
       if (data.events) saveData(KEYS.events, data.events);
+      if (data.archives) saveData(KEYS.archives, data.archives);
       if (data.activity) saveData(KEYS.activity, data.activity.slice(0, 10));
       // Old backups have no change log: keep the current one instead of wiping it
       if (data.changelog)
@@ -2286,7 +2507,20 @@ function setupThemeToggle() {
 // ============================================================
 // START — runs once the page's HTML has loaded
 // ============================================================
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
+  if (typeof ERPApi !== "undefined" && ERPApi.enabled) {
+    try {
+      if (!document.getElementById("loginForm")) {
+        const { user } = await ERPApi.me();
+        sessionStorage.setItem("userRole", user.role);
+        sessionStorage.setItem("userName", user.displayName);
+        await ERPApi.syncToLocalStorage();
+      }
+    } catch (error) {
+      sessionStorage.removeItem("userRole");
+      sessionStorage.removeItem("userName");
+    }
+  }
   requireLogin();
   applyRole();
   showUserInSidebar();
@@ -2299,6 +2533,7 @@ document.addEventListener("DOMContentLoaded", () => {
   setupInventoryPage();
   setupOfficersPage();
   setupEventsPage();
+  setupArchivesPage();
   setupDashboard();
   setupBackupPanel();
   setupReportPage();

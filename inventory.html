@@ -74,6 +74,7 @@
               >Events</a
             >
           </li>
+          <li><a href="archives.html">Archives</a></li>
           <li>
             <a href="changelog.html"
               ><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true">
@@ -220,6 +221,19 @@
             <input type="text" id="itemName" name="itemName" />
           </div>
           <div class="form-field">
+            <label for="itemDescription">Description</label>
+            <textarea id="itemDescription" name="itemDescription" rows="2"></textarea>
+          </div>
+          <div class="form-field">
+            <label for="itemSpecification">Specification / variant</label>
+            <input
+              type="text"
+              id="itemSpecification"
+              name="itemSpecification"
+              placeholder="e.g. Ballpoint, blue ink, 0.7 mm"
+            />
+          </div>
+          <div class="form-field">
             <label for="itemCategory">Category</label>
             <select id="itemCategory" name="itemCategory">
               <option value="merchandise">Merchandise</option>
@@ -247,6 +261,7 @@
 
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
+    <script src="js/api.js"></script>
     <script src="js/auth.js"></script>
     <script src="js/main.js"></script>
   </body>
