@@ -74,7 +74,12 @@
               >Events</a
             >
           </li>
-          <li><a href="archives.html">Archives</a></li>
+          <li>
+            <a href="operations.html"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="2" /><path d="M8 8h8M8 12h8M8 16h4" /><path d="M16 16l2 2 3-3" /></svg>Operations</a>
+          </li>
+          <li>
+            <a href="archives.html"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="4" rx="1" /><path d="M5 8v11a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8M10 12h4" /></svg>Archives</a>
+          </li>
           <li>
             <a href="changelog.html"
               ><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true">
@@ -239,7 +244,21 @@
           </div>
           <div class="form-field">
             <label for="eventLocation">Location</label>
-            <input type="text" id="eventLocation" name="eventLocation" />
+            <div class="location-search">
+              <input
+                type="text"
+                id="eventLocation"
+                name="eventLocation"
+                autocomplete="off"
+                aria-describedby="locationHelp"
+              />
+              <div id="locationSuggestions" class="location-suggestions" role="listbox" hidden></div>
+            </div>
+            <small id="locationHelp" class="field-help">Type a venue and select a suggested place, or enter it manually.</small>
+            <input type="hidden" id="eventAddress" />
+            <input type="hidden" id="eventLatitude" />
+            <input type="hidden" id="eventLongitude" />
+            <input type="hidden" id="eventMapUrl" />
           </div>
           <div class="form-field">
             <label for="eventDescription">Description (optional)</label>

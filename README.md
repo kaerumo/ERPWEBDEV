@@ -5,7 +5,8 @@ ERP for DLSU-D ITPC.
 Features:
 Structure and design
 
-- 4 pages: Login, Dashboard, Inventory, Officers, with a shared sidebar and one stylesheet
+- Pages for Login, Dashboard, Inventory, Officers, Events, Archives, Change log,
+  and printable Reports, with a shared sidebar and stylesheet
 - Responsive layout (the sidebar becomes a top bar on phones and fits down to 320px)
 - Nav icons, hover effects, page and modal animations, and a reduced-motion setting
 
@@ -126,38 +127,44 @@ Finals preparation
 - Event forms reject impossible dates and prevent newly created or rescheduled
   events from being placed in the past. Existing historical events remain
   viewable.
-- The current browser storage is intentionally kept as a temporary repository
-  so the UI remains usable while the backend is being selected. The planned
-  Flask/PostgreSQL API should provide resources for `/api/auth`, `/api/users`,
-  `/api/inventory`, `/api/events`, `/api/archives`, and `/api/reports`.
-- When the backend is integrated, move password verification to Flask, store
-  passwords with a server-side password hash, enforce permissions on every API
-  route, validate request schemas on the server, and use PostgreSQL
-  transactions for archive/restore operations.
-- Additional finals-ready features to consider are server-side pagination and
-  search, expanded role permissions, low-stock/event reminders, report
-  exports, and a backend audit log. These are API concerns rather than
-  frontend-only localStorage features.
+- Event locations support backend-powered place suggestions. Selecting a result
+  stores the venue, address, coordinates, and map URL; users can still enter a
+  manual location when search is unavailable. Suggestions are restricted to
+  Philippine locations.
+- The frontend still supports localStorage fallback so the UI remains usable
+  when the API is unavailable. Backend mode is enabled by configuring
+  `itpc_api_url` in browser localStorage.
 
 Backend integration
 
 - A Flask/PostgreSQL API is now available in `backend/`. It owns users,
-  inventory, events, archives, and audit logs, with administrator checks on
-  write operations.
+  inventory, events, officers, archives, and audit logs, with administrator
+  checks on write operations.
+- Sample inventory, officer, and event records are seeded into PostgreSQL on
+  the first backend start. Existing non-empty tables are preserved, so the
+  database—not the JavaScript demo arrays—is the source of truth in backend
+  mode.
 - Install and run it using [backend/README.md](backend/README.md). Set
   `itpc_api_url` in browser localStorage to `http://127.0.0.1:5000` before
   opening the login page to use backend login. If it is not set, the existing
   localStorage demo mode remains available.
 - `js/api.js` is loaded by the pages and provides the authenticated API client.
   Login switches to Flask when the API URL is configured. Authenticated pages
-  hydrate inventory, events, and archives from PostgreSQL before rendering,
-  and admin changes synchronize back through protected API endpoints. Officers
-  and audit logs now hydrate from the backend too. Dashboard/report totals use
-  the hydrated data, while dedicated report endpoints remain a future
-  optimization.
-- Flask-Migrate is included for schema migrations. Use `flask --app
-  backend.app db upgrade` and set `AUTO_CREATE_SCHEMA=0` outside local demo
-  mode.
+  hydrate inventory, events, officers, archives, and audit logs from PostgreSQL
+  before rendering. Administrator changes synchronize through protected API
+  endpoints, and `/api/reports/summary` provides backend report totals.
+- Event place search is proxied through Flask using OpenStreetMap Nominatim by
+  default. The provider URL and user agent are configurable in `.env`, keeping
+  provider configuration out of frontend JavaScript.
+- Flask-Migrate is included for schema migrations. Run
+  `flask --app backend.app db upgrade` and set `AUTO_CREATE_SCHEMA=0` outside
+  local demo mode. For an existing database, create and apply a revision after
+  model changes:
+
+```powershell
+flask --app backend.app db migrate -m "add event location metadata"
+flask --app backend.app db upgrade
+```
 - Basic backend contract tests are in `backend/tests/`. Run them with
   `pytest backend/tests`.
 - Deployment is intentionally deferred. The project is currently a full-stack
@@ -189,8 +196,10 @@ files:
    - `inventory.html` — description and specification fields.
    - `events.html` — event form used by date validation.
    - `archives.html` — archived-record search, restore, and permanent delete.
-   - `dashboard.html`, `hr.html`, `events.html`, `inventory.html`, and
-     `changelog.html` — Archives navigation links.
+   - Shared navigation in the dashboard, inventory, officers, events,
+     operations, archives, change log, about, and contact pages.
+   - `operations.html` — borrowing, approval details, notifications, suppliers,
+     financial controls, and user administration.
 
 Recommended review order:
 
@@ -220,3 +229,60 @@ To return to the frontend-only demo:
 ```js
 localStorage.removeItem("itpc_api_url");
 ```
+
+Current bug fixes and compatibility notes
+
+- Fixed broken asset paths so pages load the shared `css/` and `js/` files.
+- Added compatibility handling for older event records and test fixtures that
+  do not yet contain location metadata.
+- Preserved manual event-location entry when place search is unavailable.
+- Added migration instructions for the event `address`, `latitude`, `longitude`,
+  and `map_url` columns.
+- Kept historical events visible while preventing new or rescheduled events
+  from being placed in the past.
+- Added consistent Operations and Archives icons across all page sidebars,
+  including the legacy About and Contact pages.
+- Added shared logo, theme toggle, user chip, and navigation behavior to the
+  Operations page so its design matches the rest of the site.
+- Styled Operations form controls consistently with the existing inputs,
+  including labels, focus states, placeholders, and light/dark theme colors.
+- Added borrowing-date and return-date labels, clearer request guidance, and
+  browser-side validation that prevents a return date before the borrowing
+  date.
+- Expanded approval cards to show the requested equipment, purpose, borrowing
+  date, return date, and requester instead of only the internal approval type.
+- Improved audit-log labels so backend fields such as `requestedFrom`,
+  `dueDate`, and `equipmentId` display as readable user-facing text.
+- Kept the root `main.js` legacy duplicate untouched; current HTML pages load
+  the active implementation from `js/main.js`.
+
+Recent implementation tracking — November 5, 2026
+
+- Added PostgreSQL seed data for six inventory items, five officers, and five
+  events. Seed data is inserted only when the corresponding tables are empty;
+  existing records are not overwritten.
+- Backend mode now treats PostgreSQL as the source of truth. The frontend
+  hydrates its local cache from the API, while localStorage remains available
+  as an offline/demo fallback.
+- Restricted event place suggestions to Philippine locations using the
+  geocoder's `countrycodes=ph` filter and a server-side country check.
+- Added event location metadata persistence for address, latitude, longitude,
+  and map URL.
+- Added an Operations page backed by PostgreSQL for equipment borrowing and
+  returns, approval workflows, notifications, suppliers, purchases, expenses,
+  and budgets.
+- Borrowable assets such as the Projector, DSLR Camera, and Wireless
+  Microphone now also appear in Inventory. Operations keeps a separate
+  equipment register because asset tags, availability, return condition, and
+  borrowing history are different from stock quantity.
+- Added the enterprise database migration and protected API contracts for
+  borrowing, approvals, notifications, suppliers, financial records, and user
+  administration.
+- Added a browser-safe API request path that avoids unnecessary CORS preflight
+  failures for read-only requests.
+- Fixed PostgreSQL inventory seed ID conflicts when adding equipment assets to
+  Inventory.
+- Verified the API health endpoint, authenticated API routes, browser
+  hydration counts (9 inventory records including the three borrowable assets,
+  5 officers, and 5 events), JavaScript/Python syntax, whitespace, all static
+  page responses, and backend tests (`5 passed`).

@@ -1,5 +1,8 @@
 import os
-from datetime import date, datetime, timezone
+from urllib.parse import quote
+from urllib.request import Request, urlopen
+import json
+from datetime import date, datetime, timedelta, timezone
 from functools import wraps
 
 from dotenv import load_dotenv
@@ -49,6 +52,10 @@ class Event(db.Model):
     time = db.Column(db.String(5), nullable=False, default="")
     event_type = db.Column(db.String(30), nullable=False)
     location = db.Column(db.String(255), nullable=False)
+    address = db.Column(db.String(255), nullable=False, default="")
+    latitude = db.Column(db.Float, nullable=True)
+    longitude = db.Column(db.Float, nullable=True)
+    map_url = db.Column(db.String(500), nullable=False, default="")
     description = db.Column(db.Text, nullable=False, default="")
     created_at = db.Column(db.DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
 
@@ -87,6 +94,103 @@ class AuditLog(db.Model):
     created_at = db.Column(db.DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
 
 
+class Equipment(db.Model):
+    __tablename__ = "equipment"
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(160), nullable=False)
+    asset_tag = db.Column(db.String(80), unique=True, nullable=False)
+    description = db.Column(db.Text, nullable=False, default="")
+    status = db.Column(db.String(30), nullable=False, default="available")
+    created_at = db.Column(db.DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
+
+
+class BorrowingRequest(db.Model):
+    __tablename__ = "borrowing_requests"
+    id = db.Column(db.Integer, primary_key=True)
+    equipment_id = db.Column(db.Integer, db.ForeignKey("equipment.id"), nullable=False)
+    borrower_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    purpose = db.Column(db.Text, nullable=False)
+    requested_from = db.Column(db.Date, nullable=False)
+    due_date = db.Column(db.Date, nullable=False)
+    returned_at = db.Column(db.DateTime(timezone=True))
+    condition = db.Column(db.String(30), nullable=False, default="good")
+    damage_notes = db.Column(db.Text, nullable=False, default="")
+    status = db.Column(db.String(30), nullable=False, default="pending")
+    created_at = db.Column(db.DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
+
+
+class ApprovalRequest(db.Model):
+    __tablename__ = "approval_requests"
+    id = db.Column(db.Integer, primary_key=True)
+    request_type = db.Column(db.String(40), nullable=False)
+    reference_id = db.Column(db.Integer, nullable=True)
+    requested_by = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    reviewed_by = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
+    status = db.Column(db.String(20), nullable=False, default="pending")
+    comments = db.Column(db.Text, nullable=False, default="")
+    created_at = db.Column(db.DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
+    reviewed_at = db.Column(db.DateTime(timezone=True))
+
+
+class Notification(db.Model):
+    __tablename__ = "notifications"
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    title = db.Column(db.String(160), nullable=False)
+    message = db.Column(db.Text, nullable=False)
+    read_at = db.Column(db.DateTime(timezone=True))
+    created_at = db.Column(db.DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
+
+
+class Supplier(db.Model):
+    __tablename__ = "suppliers"
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(160), nullable=False)
+    contact_name = db.Column(db.String(120), nullable=False, default="")
+    email = db.Column(db.String(160), nullable=False, default="")
+    phone = db.Column(db.String(50), nullable=False, default="")
+    address = db.Column(db.String(255), nullable=False, default="")
+    status = db.Column(db.String(20), nullable=False, default="active")
+    created_at = db.Column(db.DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
+
+
+class PurchaseRecord(db.Model):
+    __tablename__ = "purchase_records"
+    id = db.Column(db.Integer, primary_key=True)
+    supplier_id = db.Column(db.Integer, db.ForeignKey("suppliers.id"), nullable=False)
+    description = db.Column(db.String(255), nullable=False)
+    amount = db.Column(db.Numeric(12, 2), nullable=False)
+    purchase_date = db.Column(db.Date, nullable=False)
+    status = db.Column(db.String(20), nullable=False, default="recorded")
+    created_by = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    created_at = db.Column(db.DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
+
+
+class Expense(db.Model):
+    __tablename__ = "expenses"
+    id = db.Column(db.Integer, primary_key=True)
+    category = db.Column(db.String(80), nullable=False)
+    description = db.Column(db.String(255), nullable=False)
+    amount = db.Column(db.Numeric(12, 2), nullable=False)
+    expense_date = db.Column(db.Date, nullable=False)
+    status = db.Column(db.String(20), nullable=False, default="submitted")
+    submitted_by = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    created_at = db.Column(db.DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
+
+
+class Budget(db.Model):
+    __tablename__ = "budgets"
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(160), nullable=False)
+    category = db.Column(db.String(80), nullable=False)
+    amount = db.Column(db.Numeric(12, 2), nullable=False)
+    period_start = db.Column(db.Date, nullable=False)
+    period_end = db.Column(db.Date, nullable=False)
+    status = db.Column(db.String(20), nullable=False, default="active")
+    created_by = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    created_at = db.Column(db.DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
+
+
 def create_app():
     app = Flask(__name__)
     secret_key = os.environ.get("SECRET_KEY")
@@ -115,6 +219,7 @@ def create_app():
         if os.environ.get("AUTO_CREATE_SCHEMA", "1") == "1":
             db.create_all()
         seed_users()
+        seed_demo_data()
 
     register_routes(app)
     return app
@@ -137,6 +242,107 @@ def seed_users():
                 role="member",
                 password_hash=generate_password_hash(os.environ.get("MEMBER_PASSWORD", "member123")),
             ),
+        ]
+    )
+    db.session.commit()
+
+
+def seed_demo_data():
+    has_core_data = InventoryItem.query.count() or Officer.query.count() or Event.query.count()
+    if not Equipment.query.count():
+        db.session.add_all(
+            [
+                Equipment(name="Projector", asset_tag="AV-001", description="Portable projector for presentations."),
+                Equipment(name="DSLR Camera", asset_tag="AV-002", description="Camera for event documentation."),
+                Equipment(name="Wireless Microphone", asset_tag="AV-003", description="Microphone set for programs and assemblies."),
+            ]
+        )
+    equipment_inventory = [
+        ("Projector", "Portable projector for presentations.", "HD; HDMI input", 1),
+        ("DSLR Camera", "Camera for event documentation.", "Interchangeable lens; AV-002", 1),
+        ("Wireless Microphone", "Microphone set for programs and assemblies.", "Two handheld microphones; AV-003", 2),
+    ]
+    next_inventory_id = max((item.id for item in InventoryItem.query.all()), default=0) + 1
+    for name, description, specification, quantity in equipment_inventory:
+        if not InventoryItem.query.filter_by(name=name).first():
+            db.session.add(
+                InventoryItem(
+                    id=next_inventory_id,
+                    name=name,
+                    category="event-materials",
+                    quantity=quantity,
+                    description=description,
+                    specification=specification,
+                )
+            )
+            next_inventory_id += 1
+    if has_core_data:
+        db.session.commit()
+        return
+
+    today = date.today()
+    db.session.add_all(
+        [
+            InventoryItem(
+                name="ITPC Org T-Shirts (S-XL)",
+                category="merchandise",
+                quantity=35,
+                description="Official organization shirt for ITPC members.",
+                specification="Sizes S to XL; cotton blend",
+            ),
+            InventoryItem(
+                name="Tarpaulins (event banners)",
+                category="event-materials",
+                quantity=2,
+                description="Reusable banners for council programs and assemblies.",
+                specification="3 ft x 6 ft; vinyl",
+            ),
+            InventoryItem(
+                name="Certificate holders",
+                category="office-supplies",
+                quantity=15,
+                description="Folder-style holders for certificates and awards.",
+                specification="A4; red cardstock",
+            ),
+            InventoryItem(
+                name="ITPC lanyards",
+                category="merchandise",
+                quantity=48,
+                description="Branded lanyards for officers and event attendees.",
+                specification="20 mm polyester; printed",
+            ),
+            InventoryItem(
+                name="Extension cords",
+                category="event-materials",
+                quantity=4,
+                description="Power extension cords for event equipment.",
+                specification="10 m; 4-outlet surge protected",
+            ),
+            InventoryItem(
+                name="Bond paper (reams)",
+                category="office-supplies",
+                quantity=12,
+                description="White paper for forms, reports and printed materials.",
+                specification="A4; 80 gsm; 500 sheets per ream",
+            ),
+        ]
+    )
+    db.session.add_all(
+        [
+            Officer(id=1, name="Sample President", position="president", committee="Executive", status="active"),
+            Officer(id=2, name="Sample Officer A", position="committee-head", committee="Events", status="active"),
+            Officer(id=3, name="Sample Officer B", position="member", committee="Logistics", status="inactive"),
+            Officer(id=4, name="Sample Officer C", position="member", committee="Events", status="active"),
+            Officer(id=5, name="Sample Officer D", position="committee-head", committee="Logistics", status="active"),
+        ]
+    )
+    db.session.add_all(
+        [
+            Event(id=1, title="General Assembly", date=today + timedelta(days=2), time="13:00", event_type="meeting", location="Main Auditorium", description="Semester kickoff with all officers and members."),
+            Event(id=2, title="Web Dev Workshop", date=today + timedelta(days=5), time="09:00", event_type="workshop", location="Computer Lab 3", description="Hands-on HTML, CSS and JavaScript session."),
+            Event(id=3, title="Officers Meeting", date=today + timedelta(days=9), time="16:30", event_type="meeting", location="ITPC Office", description="Budget and logistics planning."),
+            Event(id=4, title="ITPC Night", date=today + timedelta(days=16), time="18:00", event_type="social", location="University Grounds", description="Annual org night with games and performances."),
+            Event(id=5, title="Tech Talk: Careers in IT", date=today + timedelta(days=23), time="14:00", event_type="seminar", location="Lecture Hall 2", description="Industry guests discuss careers in technology."),
         ]
     )
     db.session.commit()
@@ -187,7 +393,7 @@ def item_json(item):
 
 
 def event_json(event):
-    return {
+    result = {
         "id": event.id,
         "title": event.title,
         "date": event.date.isoformat(),
@@ -196,6 +402,16 @@ def event_json(event):
         "location": event.location,
         "description": event.description,
     }
+    if hasattr(event, "address"):
+        result.update(
+            {
+                "address": event.address,
+                "latitude": event.latitude,
+                "longitude": event.longitude,
+                "mapUrl": event.map_url,
+            }
+        )
+    return result
 
 
 def officer_json(officer):
@@ -218,6 +434,60 @@ def log_change(module, action, target, details=None):
             details=details or {},
         )
     )
+
+
+def _date(value, field):
+    try:
+        return date.fromisoformat(str(value))
+    except (TypeError, ValueError):
+        raise ValueError(f"{field} must be an ISO date (YYYY-MM-DD).")
+
+
+def _amount(value):
+    try:
+        amount = float(value)
+    except (TypeError, ValueError):
+        raise ValueError("amount must be a non-negative number.")
+    if amount < 0:
+        raise ValueError("amount must be a non-negative number.")
+    return amount
+
+
+def _json_value(value):
+    return float(value) if value is not None else None
+
+
+def _equipment_json(item):
+    return {"id": item.id, "name": item.name, "assetTag": item.asset_tag, "description": item.description, "status": item.status}
+
+
+def _borrowing_json(item):
+    equipment = db.session.get(Equipment, item.equipment_id)
+    return {"id": item.id, "equipmentId": item.equipment_id, "equipment": equipment.name if equipment else None,
+            "borrowerId": item.borrower_id, "purpose": item.purpose, "requestedFrom": item.requested_from.isoformat(),
+            "dueDate": item.due_date.isoformat(), "returnedAt": item.returned_at.isoformat() if item.returned_at else None,
+            "condition": item.condition, "damageNotes": item.damage_notes, "status": item.status, "overdue": item.status not in ("returned", "rejected") and item.due_date < date.today()}
+
+
+def _approval_json(item):
+    return {"id": item.id, "type": item.request_type, "referenceId": item.reference_id, "requestedBy": item.requested_by,
+            "reviewedBy": item.reviewed_by, "status": item.status, "comments": item.comments,
+            "createdAt": item.created_at.isoformat(), "reviewedAt": item.reviewed_at.isoformat() if item.reviewed_at else None}
+
+
+def _supplier_json(item):
+    return {"id": item.id, "name": item.name, "contactName": item.contact_name, "email": item.email, "phone": item.phone, "address": item.address, "status": item.status}
+
+
+def _financial_json(item, kind):
+    result = {"id": item.id, "amount": _json_value(item.amount), "status": item.status, "createdAt": item.created_at.isoformat()}
+    if kind == "purchase":
+        result.update({"supplierId": item.supplier_id, "description": item.description, "purchaseDate": item.purchase_date.isoformat()})
+    elif kind == "expense":
+        result.update({"category": item.category, "description": item.description, "expenseDate": item.expense_date.isoformat()})
+    else:
+        result.update({"name": item.name, "category": item.category, "periodStart": item.period_start.isoformat(), "periodEnd": item.period_end.isoformat()})
+    return result
 
 
 def register_routes(app):
@@ -260,6 +530,219 @@ def register_routes(app):
                 for user in User.query.order_by(User.id).all()
             ]
         )
+
+    @app.post("/api/users")
+    @admin_required
+    def create_user():
+        try:
+            data = parse_json()
+            username = str(data.get("username", "")).strip().lower()
+            password = str(data.get("password", ""))
+            display_name = str(data.get("displayName", "")).strip()
+            role = str(data.get("role", "member")).strip()
+            if not username or len(password) < 8 or not display_name or role not in ("admin", "member"):
+                raise ValueError("username, displayName, a password of at least 8 characters, and a valid role are required.")
+            if User.query.filter_by(username=username).first():
+                return jsonify(error="Username already exists."), 409
+            user = User(username=username, display_name=display_name, role=role, password_hash=generate_password_hash(password))
+            db.session.add(user); db.session.flush()
+            log_change("users", "add", username, {"role": role}); db.session.commit()
+            return jsonify(user={"id": user.id, "username": user.username, "displayName": user.display_name, "role": user.role, "status": user.status}), 201
+        except ValueError as error:
+            db.session.rollback(); return jsonify(error=str(error)), 400
+
+    @app.patch("/api/users/<int:user_id>")
+    @admin_required
+    def update_user(user_id):
+        user = db.session.get(User, user_id)
+        if not user: return jsonify(error="User not found."), 404
+        try:
+            data = parse_json()
+            if "role" in data and data["role"] not in ("admin", "member"): raise ValueError("Invalid role.")
+            if "status" in data and data["status"] not in ("active", "disabled"): raise ValueError("Invalid status.")
+            for key, field in (("displayName", "display_name"), ("role", "role"), ("status", "status")):
+                if key in data: setattr(user, field, str(data[key]).strip())
+            if "password" in data:
+                if len(str(data["password"])) < 8: raise ValueError("Password must be at least 8 characters.")
+                user.password_hash = generate_password_hash(str(data["password"]))
+            log_change("users", "edit", user.username, data); db.session.commit()
+            return jsonify(message="User updated.")
+        except (ValueError, TypeError) as error:
+            db.session.rollback(); return jsonify(error=str(error)), 400
+
+    @app.get("/api/equipment")
+    @login_required
+    def equipment():
+        return jsonify(equipment=[_equipment_json(item) for item in Equipment.query.order_by(Equipment.name).all()])
+
+    @app.post("/api/equipment")
+    @admin_required
+    def create_equipment():
+        try:
+            data = parse_json(); name = str(data.get("name", "")).strip(); tag = str(data.get("assetTag", "")).strip()
+            if not name or not tag: raise ValueError("name and assetTag are required.")
+            item = Equipment(name=name, asset_tag=tag, description=str(data.get("description", "")).strip())
+            db.session.add(item); db.session.flush(); log_change("equipment", "add", name, _equipment_json(item)); db.session.commit()
+            return jsonify(equipment=_equipment_json(item)), 201
+        except ValueError as error:
+            db.session.rollback(); return jsonify(error=str(error)), 400
+
+    @app.post("/api/borrowing-requests")
+    @login_required
+    def create_borrowing():
+        try:
+            data = parse_json(); equipment_id = int(data.get("equipmentId")); start = _date(data.get("requestedFrom"), "requestedFrom"); due = _date(data.get("dueDate"), "dueDate")
+            item = db.session.get(Equipment, equipment_id)
+            if not item or item.status != "available": raise ValueError("Equipment is not available.")
+            if due < start: raise ValueError("dueDate must not precede requestedFrom.")
+            req = BorrowingRequest(equipment_id=equipment_id, borrower_id=current_user().id, purpose=str(data.get("purpose", "")).strip(), requested_from=start, due_date=due)
+            if not req.purpose: raise ValueError("purpose is required.")
+            db.session.add(req); db.session.flush(); db.session.add(ApprovalRequest(request_type="equipment_borrowing", reference_id=req.id, requested_by=current_user().id))
+            log_change("borrowing", "request", str(req.id), _borrowing_json(req)); db.session.commit()
+            return jsonify(request=_borrowing_json(req)), 201
+        except (ValueError, TypeError) as error:
+            db.session.rollback(); return jsonify(error=str(error)), 400
+
+    @app.get("/api/borrowing-requests")
+    @login_required
+    def borrowings():
+        query = BorrowingRequest.query if current_user().role == "admin" else BorrowingRequest.query.filter_by(borrower_id=current_user().id)
+        return jsonify(requests=[_borrowing_json(item) for item in query.order_by(BorrowingRequest.created_at.desc()).all()])
+
+    @app.get("/api/borrowing-requests/overdue")
+    @login_required
+    def overdue_borrowings():
+        query = BorrowingRequest.query.filter(BorrowingRequest.due_date < date.today(), BorrowingRequest.status.notin_(("returned", "rejected")))
+        if current_user().role != "admin": query = query.filter_by(borrower_id=current_user().id)
+        return jsonify(requests=[_borrowing_json(item) for item in query.order_by(BorrowingRequest.due_date).all()])
+
+    @app.patch("/api/borrowing-requests/<int:request_id>")
+    @admin_required
+    def update_borrowing(request_id):
+        item = db.session.get(BorrowingRequest, request_id)
+        if not item: return jsonify(error="Borrowing request not found."), 404
+        try:
+            data = parse_json(); status = str(data.get("status", item.status))
+            if status not in ("approved", "rejected", "returned", "damaged", "overdue"): raise ValueError("Invalid borrowing status.")
+            item.status = status
+            if status in ("returned", "damaged"): item.returned_at = datetime.now(timezone.utc)
+            item.condition = str(data.get("condition", item.condition)); item.damage_notes = str(data.get("damageNotes", item.damage_notes)).strip()
+            if status in ("approved", "overdue", "damaged"): db.session.get(Equipment, item.equipment_id).status = "borrowed" if status == "approved" else status
+            db.session.add(Notification(user_id=item.borrower_id, title="Borrowing request updated", message=f"Request #{item.id} is {status}."))
+            log_change("borrowing", "status", str(item.id), {"status": status}); db.session.commit()
+            return jsonify(request=_borrowing_json(item))
+        except (ValueError, TypeError) as error:
+            db.session.rollback(); return jsonify(error=str(error)), 400
+
+    @app.post("/api/borrowing-requests/<int:request_id>/return")
+    @login_required
+    def return_borrowing(request_id):
+        item = db.session.get(BorrowingRequest, request_id)
+        if not item or (current_user().role != "admin" and item.borrower_id != current_user().id): return jsonify(error="Borrowing request not found."), 404
+        data = request.get_json(silent=True) or {}; item.status = "damaged" if data.get("condition") == "damaged" else "returned"; item.condition = str(data.get("condition", "good")); item.damage_notes = str(data.get("damageNotes", "")).strip(); item.returned_at = datetime.now(timezone.utc)
+        equipment_item = db.session.get(Equipment, item.equipment_id); equipment_item.status = "damaged" if item.status == "damaged" else "available"
+        log_change("borrowing", "return", str(item.id), _borrowing_json(item)); db.session.commit()
+        return jsonify(request=_borrowing_json(item))
+
+    @app.get("/api/approvals")
+    @login_required
+    def approvals():
+        query = ApprovalRequest.query if current_user().role == "admin" else ApprovalRequest.query.filter_by(requested_by=current_user().id)
+        return jsonify(approvals=[_approval_json(item) for item in query.order_by(ApprovalRequest.created_at.desc()).all()])
+
+    @app.post("/api/approvals")
+    @login_required
+    def create_approval():
+        try:
+            data = parse_json()
+            request_type = str(data.get("type", "")).strip()
+            if not request_type: raise ValueError("type is required.")
+            item = ApprovalRequest(request_type=request_type, reference_id=data.get("referenceId"), requested_by=current_user().id, comments=str(data.get("comments", "")).strip())
+            db.session.add(item); db.session.flush(); log_change("approvals", "request", str(item.id), _approval_json(item)); db.session.commit()
+            return jsonify(approval=_approval_json(item)), 201
+        except (ValueError, TypeError) as error:
+            db.session.rollback(); return jsonify(error=str(error)), 400
+
+    @app.patch("/api/approvals/<int:approval_id>")
+    @admin_required
+    def review_approval(approval_id):
+        item = db.session.get(ApprovalRequest, approval_id)
+        if not item: return jsonify(error="Approval request not found."), 404
+        data = request.get_json(silent=True) or {}; status = data.get("status")
+        if status not in ("approved", "rejected"): return jsonify(error="status must be approved or rejected."), 400
+        item.status = status; item.comments = str(data.get("comments", "")).strip(); item.reviewed_by = current_user().id; item.reviewed_at = datetime.now(timezone.utc)
+        if item.request_type == "equipment_borrowing" and item.reference_id:
+            borrowing = db.session.get(BorrowingRequest, item.reference_id)
+            if borrowing: borrowing.status = status
+        db.session.add(Notification(user_id=item.requested_by, title="Approval updated", message=f"Approval #{item.id} was {status}."))
+        log_change("approvals", "review", str(item.id), _approval_json(item)); db.session.commit()
+        return jsonify(approval=_approval_json(item))
+
+    @app.get("/api/notifications")
+    @login_required
+    def notifications():
+        return jsonify(notifications=[{"id": n.id, "title": n.title, "message": n.message, "read": n.read_at is not None, "createdAt": n.created_at.isoformat()} for n in Notification.query.filter_by(user_id=current_user().id).order_by(Notification.created_at.desc()).all()])
+
+    @app.patch("/api/notifications/<int:notification_id>/read")
+    @login_required
+    def read_notification(notification_id):
+        item = db.session.get(Notification, notification_id)
+        if not item or item.user_id != current_user().id: return jsonify(error="Notification not found."), 404
+        item.read_at = datetime.now(timezone.utc); db.session.commit(); return jsonify(message="Notification marked as read.")
+
+    @app.get("/api/suppliers")
+    @login_required
+    def suppliers():
+        return jsonify(suppliers=[_supplier_json(item) for item in Supplier.query.order_by(Supplier.name).all()])
+
+    @app.post("/api/suppliers")
+    @admin_required
+    def create_supplier():
+        try:
+            data = parse_json(); name = str(data.get("name", "")).strip()
+            if not name: raise ValueError("name is required.")
+            item = Supplier(name=name, contact_name=str(data.get("contactName", "")).strip(), email=str(data.get("email", "")).strip(), phone=str(data.get("phone", "")).strip(), address=str(data.get("address", "")).strip())
+            db.session.add(item); db.session.flush(); log_change("suppliers", "add", name, _supplier_json(item)); db.session.commit()
+            return jsonify(supplier=_supplier_json(item)), 201
+        except ValueError as error:
+            db.session.rollback(); return jsonify(error=str(error)), 400
+
+    @app.patch("/api/suppliers/<int:supplier_id>")
+    @admin_required
+    def update_supplier(supplier_id):
+        item = db.session.get(Supplier, supplier_id)
+        if not item: return jsonify(error="Supplier not found."), 404
+        data = request.get_json(silent=True) or {}
+        for key, field in (("name", "name"), ("contactName", "contact_name"), ("email", "email"), ("phone", "phone"), ("address", "address"), ("status", "status")):
+            if key in data: setattr(item, field, str(data[key]).strip())
+        log_change("suppliers", "edit", item.name, data); db.session.commit(); return jsonify(supplier=_supplier_json(item))
+
+    def _financial_routes(model, kind, path, required):
+        @app.get(path, endpoint=f"{kind}_list")
+        @login_required
+        def list_records(model=model, kind=kind):
+            return jsonify(**{f"{kind}s": [_financial_json(item, kind) for item in model.query.order_by(model.created_at.desc()).all()]})
+
+        @app.post(path, endpoint=f"{kind}_create")
+        @admin_required
+        def create_record(model=model, kind=kind, required=required):
+            try:
+                data = parse_json()
+                for field in required:
+                    if data.get(field) in (None, ""): raise ValueError(f"{field} is required.")
+                kwargs = {"amount": _amount(data.get("amount")), "created_by": current_user().id} if kind == "purchase" else {"amount": _amount(data.get("amount")), "submitted_by": current_user().id} if kind == "expense" else {"amount": _amount(data.get("amount")), "created_by": current_user().id}
+                if kind == "purchase": kwargs.update(supplier_id=int(data["supplierId"]), description=str(data["description"]).strip(), purchase_date=_date(data["purchaseDate"], "purchaseDate"))
+                elif kind == "expense": kwargs.update(category=str(data["category"]).strip(), description=str(data["description"]).strip(), expense_date=_date(data["expenseDate"], "expenseDate"))
+                else: kwargs.update(name=str(data["name"]).strip(), category=str(data["category"]).strip(), period_start=_date(data["periodStart"], "periodStart"), period_end=_date(data["periodEnd"], "periodEnd"))
+                item = model(**kwargs); db.session.add(item); db.session.flush(); log_change(kind, "add", str(item.id), _financial_json(item, kind)); db.session.commit()
+                return jsonify(**{kind: _financial_json(item, kind)}), 201
+            except (ValueError, TypeError) as error:
+                db.session.rollback(); return jsonify(error=str(error)), 400
+        return list_records, create_record
+
+    _financial_routes(PurchaseRecord, "purchase", "/api/purchases", ("supplierId", "description", "amount", "purchaseDate"))
+    _financial_routes(Expense, "expense", "/api/expenses", ("category", "description", "amount", "expenseDate"))
+    _financial_routes(Budget, "budget", "/api/budgets", ("name", "category", "amount", "periodStart", "periodEnd"))
 
     @app.get("/api/inventory")
     @login_required
@@ -362,6 +845,39 @@ def register_routes(app):
     def events():
         return jsonify(events=[event_json(event) for event in Event.query.order_by(Event.date, Event.time).all()])
 
+    @app.get("/api/places/search")
+    @login_required
+    def place_search():
+        query = request.args.get("q", "").strip()
+        if len(query) < 3 or len(query) > 160:
+            return jsonify(places=[])
+        try:
+            search_url = os.environ.get("PLACE_SEARCH_URL", "https://nominatim.openstreetmap.org/search")
+            url = search_url + "?format=jsonv2&limit=5&addressdetails=1&countrycodes=ph&q=" + quote(query)
+            req = Request(url, headers={"User-Agent": os.environ.get("PLACE_SEARCH_USER_AGENT", "ITPC-ERP/1.0")})
+            with urlopen(req, timeout=5) as response:
+                results = json.load(response)
+            philippines_results = [
+                result
+                for result in results
+                if result.get("address", {}).get("country_code", "").lower() == "ph"
+            ]
+            return jsonify(
+                places=[
+                    {
+                        "name": result.get("name") or result.get("display_name", "").split(",")[0],
+                        "address": result.get("display_name", ""),
+                        "latitude": float(result["lat"]),
+                        "longitude": float(result["lon"]),
+                        "mapUrl": "https://www.openstreetmap.org/?mlat=" + result["lat"] + "&mlon=" + result["lon"] + "#map=18/" + result["lat"] + "/" + result["lon"],
+                    }
+                    for result in philippines_results
+                ]
+            )
+        except (OSError, ValueError, KeyError, json.JSONDecodeError):
+            app.logger.exception("Place search failed")
+            return jsonify(error="Location search is temporarily unavailable."), 502
+
     @app.get("/api/officers")
     @login_required
     def officers():
@@ -406,7 +922,7 @@ def register_routes(app):
             location = str(data.get("location", "")).strip()
             if not title or not location:
                 raise ValueError("Title and location are required.")
-            event = Event(title=title, date=event_date, time=str(data.get("time", "")), event_type=str(data.get("type", "meeting")), location=location, description=str(data.get("description", "")).strip())
+            event = Event(title=title, date=event_date, time=str(data.get("time", "")), event_type=str(data.get("type", "meeting")), location=location, address=str(data.get("address", "")).strip(), latitude=data.get("latitude"), longitude=data.get("longitude"), map_url=str(data.get("mapUrl", "")).strip(), description=str(data.get("description", "")).strip())
             db.session.add(event)
             db.session.flush()
             log_change("events", "add", title, event_json(event))
@@ -431,6 +947,12 @@ def register_routes(app):
             for field in ("title", "time", "location", "description"):
                 if field in data:
                     setattr(event, field, str(data[field]).strip())
+            for field in ("address", "mapUrl"):
+                if field in data:
+                    setattr(event, "map_url" if field == "mapUrl" else field, str(data[field]).strip())
+            for field in ("latitude", "longitude"):
+                if field in data:
+                    setattr(event, field, data[field])
             if "type" in data:
                 event.event_type = str(data["type"]).strip()
             event.date = next_date
@@ -476,6 +998,10 @@ def register_routes(app):
                 event.time = str(payload.get("time", ""))
                 event.event_type = str(payload.get("type", "meeting"))
                 event.location = str(payload["location"]).strip()
+                event.address = str(payload.get("address", "")).strip()
+                event.latitude = payload.get("latitude")
+                event.longitude = payload.get("longitude")
+                event.map_url = str(payload.get("mapUrl", "")).strip()
                 event.description = str(payload.get("description", "")).strip()
             db.session.commit()
             return jsonify(message="Events synchronized.")
@@ -507,7 +1033,7 @@ def register_routes(app):
         elif entry.record_type == "events":
             if db.session.get(Event, entry.record_id):
                 return jsonify(error="The event record already exists."), 409
-            db.session.add(Event(id=entry.record_id, title=record["title"], date=date.fromisoformat(record["date"]), time=record.get("time", ""), event_type=record.get("type", "meeting"), location=record["location"], description=record.get("description", "")))
+            db.session.add(Event(id=entry.record_id, title=record["title"], date=date.fromisoformat(record["date"]), time=record.get("time", ""), event_type=record.get("type", "meeting"), location=record["location"], address=record.get("address", ""), latitude=record.get("latitude"), longitude=record.get("longitude"), map_url=record.get("mapUrl", ""), description=record.get("description", "")))
         else:
             return jsonify(error="This archive type cannot be restored yet."), 400
         log_change(entry.record_type, "restore", entry.name, record)

@@ -1462,6 +1462,11 @@ function eventCardHTML(event, todayKey) {
       <div class="event-info">
         <strong>${escapeHTML(event.title)}</strong>
         <small>${escapeHTML(formatEventTime(event.time))} · ${escapeHTML(event.location)}</small>
+        ${
+          event.mapUrl
+            ? `<a class="event-map-link" href="${escapeHTML(event.mapUrl)}" target="_blank" rel="noopener">View map</a>`
+            : ""
+        }
         <span class="event-tag type-${escapeHTML(event.type)}">${escapeHTML(typeLabel)}</span>
       </div>
       <div class="event-actions">
@@ -1620,6 +1625,14 @@ function setupEventsPage() {
     document.getElementById("eventLocation").value = event
       ? event.location
       : "";
+    document.getElementById("eventAddress").value = event
+      ? event.address || ""
+      : "";
+    document.getElementById("eventLatitude").value = event?.latitude ?? "";
+    document.getElementById("eventLongitude").value = event?.longitude ?? "";
+    document.getElementById("eventMapUrl").value = event
+      ? event.mapUrl || ""
+      : "";
     document.getElementById("eventDescription").value = event
       ? event.description
       : "";
@@ -1633,6 +1646,75 @@ function setupEventsPage() {
     .getElementById("addEventBtn")
     .addEventListener("click", () => openEventForm(null));
 
+  const locationInput = document.getElementById("eventLocation");
+  const suggestionsEl = document.getElementById("locationSuggestions");
+  let locationSearchTimer = null;
+  let locationRequest = 0;
+
+  function clearLocationSelection() {
+    document.getElementById("eventAddress").value = "";
+    document.getElementById("eventLatitude").value = "";
+    document.getElementById("eventLongitude").value = "";
+    document.getElementById("eventMapUrl").value = "";
+  }
+
+  function renderLocationSuggestions(places) {
+    suggestionsEl.innerHTML = places
+      .map(
+        (place, index) =>
+          `<button type="button" class="location-option" data-place-index="${index}" role="option">
+            <strong>${escapeHTML(place.name)}</strong>
+            <small>${escapeHTML(place.address)}</small>
+          </button>`,
+      )
+      .join("");
+    suggestionsEl.hidden = places.length === 0;
+  }
+
+  locationInput.addEventListener("input", () => {
+    clearLocationSelection();
+    clearTimeout(locationSearchTimer);
+    const query = locationInput.value.trim();
+    if (!ERPApi.enabled || query.length < 3) {
+      suggestionsEl.hidden = true;
+      return;
+    }
+    locationSearchTimer = setTimeout(async () => {
+      const requestId = ++locationRequest;
+      try {
+        const result = await ERPApi.searchPlaces(query);
+        if (requestId === locationRequest) renderLocationSuggestions(result.places || []);
+      } catch (error) {
+        suggestionsEl.hidden = true;
+      }
+    }, 350);
+  });
+
+  suggestionsEl.addEventListener("click", (event) => {
+    const option = event.target.closest("[data-place-index]");
+    if (!option) return;
+    const places = [...suggestionsEl.querySelectorAll("[data-place-index]")];
+    const place = places[Number(option.dataset.placeIndex)];
+    if (!place) return;
+    const selected = place.__data;
+    locationInput.value = selected.name;
+    document.getElementById("eventAddress").value = selected.address;
+    document.getElementById("eventLatitude").value = selected.latitude;
+    document.getElementById("eventLongitude").value = selected.longitude;
+    document.getElementById("eventMapUrl").value = selected.mapUrl;
+    suggestionsEl.hidden = true;
+  });
+
+  let latestPlaces = [];
+  const originalRenderLocationSuggestions = renderLocationSuggestions;
+  renderLocationSuggestions = (places) => {
+    latestPlaces = places;
+    originalRenderLocationSuggestions(places);
+    suggestionsEl.querySelectorAll("[data-place-index]").forEach((option, index) => {
+      option.__data = latestPlaces[index];
+    });
+  };
+
   form.addEventListener("submit", (submitEvent) => {
     submitEvent.preventDefault();
 
@@ -1641,6 +1723,12 @@ function setupEventsPage() {
     const time = document.getElementById("eventTime").value;
     const type = document.getElementById("eventType").value;
     const location = document.getElementById("eventLocation").value.trim();
+    const address = document.getElementById("eventAddress").value.trim();
+    const latitudeText = document.getElementById("eventLatitude").value;
+    const longitudeText = document.getElementById("eventLongitude").value;
+    const latitude = latitudeText === "" ? null : Number(latitudeText);
+    const longitude = longitudeText === "" ? null : Number(longitudeText);
+    const mapUrl = document.getElementById("eventMapUrl").value.trim();
     const description = document
       .getElementById("eventDescription")
       .value.trim();
@@ -1676,7 +1764,18 @@ function setupEventsPage() {
       return;
     }
 
-    const data = { title, date, time, type, location, description };
+    const data = {
+      title,
+      date,
+      time,
+      type,
+      location,
+      address,
+      latitude,
+      longitude,
+      mapUrl,
+      description,
+    };
 
     if (editingId === null) {
       const created = { id: nextId(events), ...data };
@@ -1728,8 +1827,15 @@ function setupEventsPage() {
         ["Date", formatEventDate(item.date)],
         ["Time", formatEventTime(item.time)],
         ["Location", item.location],
+        ["Address", item.address || "—"],
         ["Type", EVENT_TYPE_LABELS[item.type] || item.type],
         ["Details", item.description || "—"],
+        [
+          "Map",
+          item.mapUrl
+            ? `<a href="${escapeHTML(item.mapUrl)}" target="_blank" rel="noopener">Open map</a>`
+            : "—",
+        ],
       ]);
       return;
     }
@@ -2301,12 +2407,40 @@ const ACTION_LABELS = {
   delete: "Deleted",
   restore: "Restored",
   reset: "Reset",
+  request: "Requested",
+  review: "Reviewed",
+  status: "Status changed",
+  return: "Returned",
+  archive: "Archived",
+  purge: "Permanently deleted",
 };
 const MODULE_LABELS = {
   inventory: "Inventory",
   officers: "Officers",
   events: "Events",
+  borrowing: "Borrowing",
+  approvals: "Approvals",
+  suppliers: "Suppliers",
+  purchases: "Purchases",
+  expenses: "Expenses",
+  budgets: "Budgets",
+  users: "Users",
   system: "System",
+};
+
+const CHANGE_FIELD_LABELS = {
+  requestedFrom: "Requested from",
+  dueDate: "Due date",
+  equipment: "Equipment",
+  equipmentId: "Equipment ID",
+  purpose: "Purpose",
+  status: "Status",
+  condition: "Condition",
+  damageNotes: "Damage notes",
+  returnedAt: "Returned at",
+  overdue: "Overdue",
+  borrowerId: "Borrower ID",
+  id: "Record ID",
 };
 
 function formatFullTime(isoString) {
@@ -2316,14 +2450,47 @@ function formatFullTime(isoString) {
   });
 }
 
+function getChangeDetails(entry) {
+  if (Array.isArray(entry.details)) return entry.details;
+  const details = entry.details || {};
+  if (details.before && details.after) {
+    const fields = new Set([
+      ...Object.keys(details.before),
+      ...Object.keys(details.after),
+    ]);
+    return [...fields].map((field) => ({
+      field,
+      from: details.before[field] ?? null,
+      to: details.after[field] ?? null,
+    }));
+  }
+  return Object.entries(details).map(([field, value]) => ({
+    field,
+    from: null,
+    to: value,
+  }));
+}
+
+function changeFieldLabel(field) {
+  return CHANGE_FIELD_LABELS[field] || field.replace(/([a-z])([A-Z])/g, "$1 $2");
+}
+
+function changeValue(value) {
+  if (value === null || value === undefined || value === "") return "None";
+  if (typeof value === "boolean") return value ? "Yes" : "No";
+  if (typeof value === "object") return JSON.stringify(value);
+  return String(value);
+}
+
 // One line per changed field, as plain text (used for search and CSV)
 function changeDetailsText(entry) {
-  return entry.details
+  return getChangeDetails(entry)
     .map((d) => {
+      const field = changeFieldLabel(d.field);
       if (d.from !== null && d.to !== null)
-        return d.field + ": " + d.from + " → " + d.to;
-      if (d.to !== null) return d.field + ": " + d.to;
-      return d.field + ": " + d.from;
+        return field + ": " + changeValue(d.from) + " → " + changeValue(d.to);
+      if (d.to !== null) return field + ": " + changeValue(d.to);
+      return field + ": " + changeValue(d.from);
     })
     .join("; ");
 }
@@ -2337,25 +2504,29 @@ function csvCell(value) {
 }
 
 function changeDetailsHTML(entry) {
-  if (entry.details.length === 0) return "";
+  const details = getChangeDetails(entry);
+  if (details.length === 0) return "";
   return (
     '<ul class="change-details">' +
-    entry.details
+    details
       .map((d) => {
-        const label = "<b>" + escapeHTML(d.field) + "</b> ";
+        const label = "<b>" + escapeHTML(changeFieldLabel(d.field)) + "</b> ";
         if (d.from !== null && d.to !== null) {
           return (
             "<li>" +
             label +
             "<del>" +
-            escapeHTML(d.from) +
+            escapeHTML(changeValue(d.from)) +
             "</del> → <ins>" +
-            escapeHTML(d.to) +
+            escapeHTML(changeValue(d.to)) +
             "</ins></li>"
           );
         }
         return (
-          "<li>" + label + escapeHTML(d.to !== null ? d.to : d.from) + "</li>"
+          "<li>" +
+          label +
+          escapeHTML(changeValue(d.to !== null ? d.to : d.from)) +
+          "</li>"
         );
       })
       .join("") +

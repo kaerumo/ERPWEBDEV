@@ -10,9 +10,13 @@ const ERPApi = (() => {
 
   async function request(path, options = {}) {
     if (!baseUrl) throw new Error("ERP_API_URL is not configured.");
+    const headers = { ...(options.headers || {}) };
+    if (options.body && !headers["Content-Type"]) {
+      headers["Content-Type"] = "application/json";
+    }
     const response = await fetch(baseUrl + path, {
       credentials: "include",
-      headers: { "Content-Type": "application/json", ...(options.headers || {}) },
+      headers,
       ...options,
     });
     const body = await response.json().catch(() => ({}));
@@ -93,6 +97,7 @@ const ERPApi = (() => {
 
   return Object.freeze({
     enabled: Boolean(baseUrl),
+    request,
     syncToLocalStorage,
     persist,
     login: (username, password) =>
@@ -104,6 +109,8 @@ const ERPApi = (() => {
     me: () => request("/api/auth/me"),
     inventory: () => request("/api/inventory"),
     events: () => request("/api/events"),
+    searchPlaces: (query) =>
+      request("/api/places/search?q=" + encodeURIComponent(query)),
     archives: () => request("/api/archives"),
     auditLogs: () => request("/api/audit-logs"),
     reportSummary: () => request("/api/reports/summary"),
