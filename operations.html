@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ITPC — Operations</title>
+    <link rel="icon" type="image/png" href="assets/favicon.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Chakra+Petch:ital,wght@0,500;0,600;0,700;1,600;1,700&display=swap"
+      rel="stylesheet"
+    />
+    <script>
+      document.documentElement.setAttribute(
+        "data-theme",
+        localStorage.getItem("itpc_theme") || "dark",
+      );
+    </script>
+    <link rel="stylesheet" href="css/style.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <a class="sidebar-brand" href="dashboard.html">
+          <img src="assets/itpc-logo.png" alt="ITPC logo" width="42" height="42" />
+          <span class="brand-text"><strong>ITPC</strong><small>Program Council ERP</small></span>
+        </a>
+        <ul class="sidebar-nav">
+          <li><a href="dashboard.html"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="9" rx="1" /><rect x="14" y="3" width="7" height="5" rx="1" /><rect x="14" y="12" width="7" height="9" rx="1" /><rect x="3" y="16" width="7" height="5" rx="1" /></svg>Dashboard</a></li>
+          <li><a href="inventory.html"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 8l-9-5-9 5v8l9 5 9-5V8z" /><path d="M3 8l9 5 9-5M12 13v8" /></svg>Inventory</a></li>
+          <li><a class="is-active" href="operations.html"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="2" /><path d="M8 8h8M8 12h8M8 16h4" /><path d="M16 16l2 2 3-3" /></svg>Operations</a></li>
+          <li><a href="hr.html"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.5" /><path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6" /><circle cx="17" cy="9" r="2.5" /><path d="M17 14c2.8 0 4.5 1.9 4.5 4.5" /></svg>Officers</a></li>
+          <li><a href="events.html"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M3 10h18M8 3v4M16 3v4" /></svg>Events</a></li>
+          <li><a href="archives.html"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16v13H4zM3 4h18v3H3zM9 11h6" /></svg>Archives</a></li>
+          <li><a href="changelog.html"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8" /><path d="M3 3v5h5M12 7v5l3 2" /></svg>Change log</a></li>
+        </ul>
+        <div class="sidebar-footer">
+          <div class="user-chip"><span class="user-avatar" id="userAvatar">?</span><span><strong id="userName">Guest</strong><small id="userRole"></small></span></div>
+          <button type="button" class="theme-toggle" id="themeToggle" aria-pressed="false">
+            <svg class="to-light" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" /></svg>
+            <svg class="to-dark" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" /></svg>
+            <span class="to-light">Light mode</span><span class="to-dark">Dark mode</span>
+          </button>
+          <a href="index.html" id="logoutLink">Log out</a>
+        </div>
+      </aside>
+      <main class="main-content">
+        <div class="page-header">
+          <div><h1>Operations</h1><p>Borrowing, approvals, notifications, suppliers, and financial controls.</p></div>
+          <button class="btn btn-secondary" id="refreshOperations">Refresh</button>
+        </div>
+        <p class="form-error" id="operationsError" hidden></p>
+        <section class="stat-grid" id="operationsStats"></section>
+        <section class="operations-grid">
+          <div class="panel">
+            <div class="panel-header">
+              <h2>Equipment borrowing</h2>
+              <p class="panel-help">Choose the equipment and dates for your request.</p>
+            </div>
+            <form id="borrowForm" class="stack-form">
+              <label for="borrowEquipment">Equipment</label>
+              <select id="borrowEquipment" required><option value="">Select equipment</option></select>
+              <label for="borrowPurpose">Purpose</label>
+              <input id="borrowPurpose" placeholder="Why do you need this equipment?" required />
+              <div class="form-row">
+                <div><label for="borrowFrom">Borrowing date</label><input id="borrowFrom" type="date" required /></div>
+                <div><label for="borrowDue">Return date</label><input id="borrowDue" type="date" required /></div>
+              </div>
+              <button class="btn btn-primary" type="submit">Request equipment</button>
+            </form>
+            <div id="borrowingList" class="operations-list"></div>
+          </div>
+          <div class="panel">
+            <div class="panel-header"><h2>Approvals</h2></div>
+            <div id="approvalList" class="operations-list"></div>
+          </div>
+          <div class="panel">
+            <div class="panel-header"><h2>Notifications</h2></div>
+            <div id="notificationList" class="operations-list"></div>
+          </div>
+          <div class="panel">
+            <div class="panel-header"><h2>Suppliers</h2></div>
+            <form id="supplierForm" class="stack-form admin-only">
+              <input id="supplierName" placeholder="Supplier name" required />
+              <input id="supplierEmail" type="email" placeholder="Email" />
+              <input id="supplierPhone" placeholder="Phone" />
+              <button class="btn btn-primary" type="submit">Add supplier</button>
+            </form>
+            <div id="supplierList" class="operations-list"></div>
+          </div>
+          <div class="panel">
+            <div class="panel-header"><h2>Purchases</h2></div>
+            <form id="purchaseForm" class="stack-form admin-only">
+              <select id="purchaseSupplier" required><option value="">Select supplier</option></select>
+              <input id="purchaseDescription" placeholder="Description" required />
+              <input id="purchaseAmount" type="number" min="0" step="0.01" placeholder="Amount" required />
+              <input id="purchaseDate" type="date" required />
+              <button class="btn btn-primary" type="submit">Record purchase</button>
+            </form>
+            <div id="purchaseList" class="operations-list"></div>
+          </div>
+          <div class="panel">
+            <div class="panel-header"><h2>Purchases and expenses</h2></div>
+            <form id="expenseForm" class="stack-form admin-only">
+              <input id="expenseCategory" placeholder="Expense category" required />
+              <input id="expenseDescription" placeholder="Description" required />
+              <input id="expenseAmount" type="number" min="0" step="0.01" placeholder="Amount" required />
+              <input id="expenseDate" type="date" required />
+              <button class="btn btn-primary" type="submit">Record expense</button>
+            </form>
+            <div id="expenseList" class="operations-list"></div>
+          </div>
+          <div class="panel">
+            <div class="panel-header"><h2>Budgets</h2></div>
+            <form id="budgetForm" class="stack-form admin-only">
+              <input id="budgetName" placeholder="Budget name" required />
+              <input id="budgetCategory" placeholder="Category" required />
+              <input id="budgetAmount" type="number" min="0" step="0.01" placeholder="Amount" required />
+              <div class="form-row"><input id="budgetStart" type="date" required /><input id="budgetEnd" type="date" required /></div>
+              <button class="btn btn-primary" type="submit">Create budget</button>
+            </form>
+            <div id="budgetList" class="operations-list"></div>
+          </div>
+          <div class="panel admin-only">
+            <div class="panel-header"><h2>User administration</h2></div>
+            <form id="userForm" class="stack-form">
+              <input id="userUsername" placeholder="Username" required />
+              <input id="userDisplayName" placeholder="Display name" required />
+              <input id="userPassword" type="password" minlength="8" placeholder="Temporary password" required />
+              <select id="userRole"><option value="member">Member</option><option value="admin">Admin</option></select>
+              <button class="btn btn-primary" type="submit">Create user</button>
+            </form>
+            <div id="userList" class="operations-list"></div>
+          </div>
+        </section>
+      </main>
+    </div>
+    <script src="js/api.js"></script>
+    <script src="js/main.js"></script>
+    <script src="js/operations.js"></script>
+  </body>
+</html>

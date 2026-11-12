@@ -75,6 +75,12 @@
             >
           </li>
           <li>
+            <a href="operations.html"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="2" /><path d="M8 8h8M8 12h8M8 16h4" /><path d="M16 16l2 2 3-3" /></svg>Operations</a>
+          </li>
+          <li>
+            <a href="archives.html"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="4" rx="1" /><path d="M5 8v11a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8M10 12h4" /></svg>Archives</a>
+          </li>
+          <li>
             <a href="changelog.html"
               ><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true">
                 <path d="M3 12a9 9 0 1 0 3-6.7L3 8" />
@@ -220,6 +226,19 @@
             <input type="text" id="itemName" name="itemName" />
           </div>
           <div class="form-field">
+            <label for="itemDescription">Description</label>
+            <textarea id="itemDescription" name="itemDescription" rows="2"></textarea>
+          </div>
+          <div class="form-field">
+            <label for="itemSpecification">Specification / variant</label>
+            <input
+              type="text"
+              id="itemSpecification"
+              name="itemSpecification"
+              placeholder="e.g. Ballpoint, blue ink, 0.7 mm"
+            />
+          </div>
+          <div class="form-field">
             <label for="itemCategory">Category</label>
             <select id="itemCategory" name="itemCategory">
               <option value="merchandise">Merchandise</option>
@@ -247,6 +266,7 @@
 
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
+    <script src="js/api.js"></script>
     <script src="js/auth.js"></script>
     <script src="js/main.js"></script>
   </body>
