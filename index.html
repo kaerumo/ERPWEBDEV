@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>ITPC — Log in</title>
-    <link rel="icon" type="image/png" href="assets/favicon.png" />
+    <link rel="icon" type="image/png" href="/static/favicon.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -17,15 +17,10 @@
         localStorage.getItem("itpc_theme") || "dark",
       );
     </script>
-    <link rel="stylesheet" href="css/style.css" />
+    <link rel="stylesheet" href="/static/style.css" />
   </head>
   <body>
-    <!--
-    LOGIN PAGE
-    - Front-end only. Accounts are stored as salted password hashes in
-      js/auth.js (ACCOUNTS); the login check, lockout and sessions live there too.
-    - The red glow follows your mouse (see setupLoginSpotlight in main.js).
-  -->
+    <!-- The red glow follows your mouse (see setupLoginSpotlight in main.js). -->
 
     <main class="login-screen" id="loginScreen">
       <button
@@ -51,7 +46,7 @@
       <section class="login-hero">
         <img
           class="hero-logo"
-          src="assets/itpc-logo.png"
+          src="/static/itpc-logo.png"
           alt="ITPC logo"
           width="112"
           height="112"
@@ -110,8 +105,6 @@
       </section>
     </main>
 
-    <!-- auth.js must come first: main.js depends on it -->
-    <script src="js/auth.js"></script>
-    <script src="js/main.js"></script>
+    <script src="/static/main.js"></script>
   </body>
 </html>

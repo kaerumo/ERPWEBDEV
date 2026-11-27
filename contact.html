@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>ITPC — Contact</title>
-    <link rel="icon" type="image/png" href="assets/favicon.png" />
+    <link rel="icon" type="image/png" href="/static/favicon.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -17,7 +17,7 @@
         localStorage.getItem("itpc_theme") || "dark",
       );
     </script>
-    <link rel="stylesheet" href="css/style.css" />
+    <link rel="stylesheet" href="/static/style.css" />
   </head>
   <body>
     <div class="app-shell">
@@ -26,7 +26,7 @@
       <aside class="sidebar">
         <a class="sidebar-brand" href="dashboard.html">
           <img
-            src="assets/itpc-logo.png"
+            src="/static/itpc-logo.png"
             alt="ITPC logo"
             width="42"
             height="42"
@@ -192,7 +192,7 @@
           <div class="footer-grid">
             <div class="footer-brand">
               <div class="footer-logo">
-                <img src="assets/itpc-logo.png" alt="" width="40" height="40" />
+                <img src="/static/itpc-logo.png" alt="" width="40" height="40" />
                 <div>
                   <strong>ITPC</strong>
                   <small>Program Council ERP · DLSU-D</small>
@@ -245,8 +245,7 @@
       </main>
     </div>
 
-    <script src="js/auth.js"></script>
-    <script src="js/main.js"></script>
+    <script src="/static/main.js"></script>
     <script>
       // No server here, so the form builds an email and opens the user's mail app.
       (function () {

@@ -5,7 +5,7 @@
 // pages where they are missing.
 //
 // SECTIONS
-//   A. Data (localStorage)        D. Search, filter & sort
+// A. Data (Django API)          D. Search, filter & sort
 //   B. Login, logout & roles      E. Inventory page
 //   C. Small helpers              F. Officers page
 //                                 G. Dashboard
@@ -16,9 +16,8 @@
 
 // ============================================================
 // A. DATA
-// Inventory, officers and the activity log are saved in localStorage
-// so they survive page changes. That is what lets the Dashboard show
-// real numbers.
+// Business data is loaded from the authenticated Django API. localStorage is
+// reserved for presentation preferences and the last-backup timestamp.
 // ============================================================
 const KEYS = {
   inventory: "itpc_inventory",
@@ -30,6 +29,78 @@ const KEYS = {
 };
 
 const LOW_STOCK_LIMIT = 5; // quantity at or below this = "Low stock"
+const COLLECTION_BY_KEY = {
+  [KEYS.inventory]: "inventory",
+  [KEYS.officers]: "officers",
+  [KEYS.activity]: "activity",
+  [KEYS.events]: "events",
+  [KEYS.changelog]: "changelog",
+};
+let appUser = null;
+let appData = {};
+let appRevisions = {};
+let pendingDataWrite = Promise.resolve();
+let conflictReloadScheduled = false;
+
+function csrfToken() {
+  const cookie = document.cookie
+    .split("; ")
+    .find((entry) => entry.startsWith("csrftoken="));
+  return cookie ? decodeURIComponent(cookie.slice("csrftoken=".length)) : "";
+}
+
+async function apiRequest(url, options) {
+  const requestOptions = Object.assign(
+    { credentials: "same-origin" },
+    options || {},
+  );
+  requestOptions.headers = Object.assign({}, requestOptions.headers || {});
+  const method = (requestOptions.method || "GET").toUpperCase();
+  if (!["GET", "HEAD", "OPTIONS", "TRACE"].includes(method)) {
+    requestOptions.headers["X-CSRFToken"] = csrfToken();
+  }
+  if (requestOptions.body) {
+    requestOptions.headers["Content-Type"] = "application/json";
+  }
+
+  const response = await fetch(url, requestOptions);
+  let result = {};
+  try {
+    result = await response.json();
+  } catch (error) {
+    if (response.ok) throw new Error("The server returned an invalid response.");
+  }
+  if (!response.ok) {
+    const failure = new Error(result.error || "The server request failed.");
+    failure.status = response.status;
+    throw failure;
+  }
+  return result;
+}
+
+async function initializeBackend() {
+  const isLoginPage = document.getElementById("loginForm") !== null;
+  const session = await apiRequest("/api/session/");
+  appUser = session.authenticated ? session : null;
+
+  if (isLoginPage) {
+    if (appUser) window.location.href = "/dashboard.html";
+    return !appUser;
+  }
+  if (!appUser) {
+    window.location.href = "/index.html";
+    return false;
+  }
+
+  appData = await apiRequest("/api/data/");
+  appRevisions = appData._revisions;
+  delete appData._revisions;
+  return true;
+}
+
+function flushPendingWrites() {
+  return pendingDataWrite;
+}
 
 const DEFAULT_INVENTORY = [
   {
@@ -174,26 +245,44 @@ const POSITION_LABELS = {
   member: "Member",
 };
 
-// Read a list from localStorage. If nothing is saved yet (or the saved
-// data is broken), save the default list and use that instead.
+// Read the page's already-loaded collection from the server-backed cache.
 function loadData(key, defaults) {
-  const saved = localStorage.getItem(key);
-
-  if (saved) {
-    try {
-      return JSON.parse(saved);
-    } catch (error) {
-      // broken data: fall through and use the defaults
-    }
+  const collection = COLLECTION_BY_KEY[key];
+  if (!collection || !Object.prototype.hasOwnProperty.call(appData, collection)) {
+    throw new Error("The server did not provide the requested data.");
   }
-
-  const copy = JSON.parse(JSON.stringify(defaults)); // a fresh copy
-  saveData(key, copy);
-  return copy;
+  return appData[collection];
 }
 
 function saveData(key, data) {
-  localStorage.setItem(key, JSON.stringify(data));
+  const collection = COLLECTION_BY_KEY[key];
+  if (!collection) throw new Error("Unknown server data collection.");
+
+  appData[collection] = data;
+  const write = pendingDataWrite
+    .catch(() => {})
+    .then(async () => {
+      const result = await apiRequest("/api/data/" + collection + "/", {
+        method: "PUT",
+        headers: { "If-Match": String(appRevisions[collection]) },
+        body: JSON.stringify(data),
+      });
+      appRevisions[collection] = result.revision;
+      return result;
+    });
+  pendingDataWrite = write;
+  write.catch((error) => {
+    if (error.status === 409) {
+      showToast("Data changed in another session. Reloading to get the latest copy.");
+      if (!conflictReloadScheduled) {
+        conflictReloadScheduled = true;
+        window.setTimeout(() => window.location.reload(), 2500);
+      }
+    } else {
+      showToast("Save failed: " + error.message);
+    }
+  });
+  return write;
 }
 
 // Next free id = highest id in the list + 1
@@ -253,8 +342,8 @@ const CHANGE_FIELDS = {
 
 function currentUser() {
   return {
-    name: sessionStorage.getItem("userName") || "Unknown",
-    role: sessionStorage.getItem("userRole") || "unknown",
+    name: (appUser && appUser.name) || "Unknown",
+    role: (appUser && appUser.role) || "unknown",
   };
 }
 
@@ -314,31 +403,14 @@ function recordChange(module, action, before, after, message) {
 
 // ============================================================
 // B. LOGIN, LOGOUT & ROLES
-// NOTE: front-end only. This shows how role-based access BEHAVES;
-// it is not real security (anyone can read these passwords here).
+// Authentication and role checks are enforced by the Django server.
 // ============================================================
-const DUMMY_ACCOUNTS = [
-  {
-    username: "admin",
-    password: "admin123",
-    role: "admin",
-    displayName: "Admin",
-  },
-  {
-    username: "member",
-    password: "member123",
-    role: "member",
-    displayName: "Member",
-  },
-];
-
-// sessionStorage is cleared when the tab closes, so it works well for "who is logged in".
 function isLoggedIn() {
-  return sessionStorage.getItem("userRole") !== null;
+  return appUser !== null;
 }
 
 function isAdmin() {
-  return sessionStorage.getItem("userRole") === "admin";
+  return Boolean(appUser && appUser.role === "admin");
 }
 
 // If you open a page without logging in, go back to the login page.
@@ -361,7 +433,7 @@ function showUserInSidebar() {
   const nameEl = document.getElementById("userName");
   if (!nameEl || !isLoggedIn()) return;
 
-  const name = sessionStorage.getItem("userName");
+  const name = appUser.name;
   nameEl.textContent = name;
   document.getElementById("userAvatar").textContent = name.charAt(0);
   document.getElementById("userRole").textContent = isAdmin()
@@ -377,30 +449,29 @@ function setupLoginForm() {
   const card = document.getElementById("loginCard");
   const errorEl = document.getElementById("loginError");
 
-  form.addEventListener("submit", (event) => {
+  form.addEventListener("submit", async (event) => {
     event.preventDefault(); // stop the page from reloading
 
     const username = document.getElementById("username").value.trim();
-    const password = passwordInput.value.trim();
+    const password = passwordInput.value;
+    const submit = form.querySelector('[type="submit"]');
+    errorEl.hidden = true;
+    submit.disabled = true;
 
-    // find() returns the matching account, or undefined if none match
-    const account = DUMMY_ACCOUNTS.find(
-      (entry) => entry.username === username && entry.password === password,
-    );
-
-    if (!account) {
-      errorEl.textContent = "Invalid username or password.";
+    try {
+      await apiRequest("/api/session/login/", {
+        method: "POST",
+        body: JSON.stringify({ username: username, password: password }),
+      });
+      window.location.href = "/dashboard.html";
+    } catch (error) {
+      errorEl.textContent = error.message;
       errorEl.hidden = false;
-
-      // Shake the card: add the CSS class, then remove it after the animation
       card.classList.add("is-shaking");
       setTimeout(() => card.classList.remove("is-shaking"), 400);
-      return;
+    } finally {
+      submit.disabled = false;
     }
-
-    sessionStorage.setItem("userRole", account.role);
-    sessionStorage.setItem("userName", account.displayName);
-    window.location.href = "dashboard.html";
   });
 
   // Show / Hide password button
@@ -415,16 +486,6 @@ function setupLoginForm() {
     }
   });
 
-  // "Fill admin" / "Fill member" buttons copy a demo account into the form
-  document.querySelectorAll("[data-demo]").forEach((button) => {
-    button.addEventListener("click", () => {
-      const account = DUMMY_ACCOUNTS.find(
-        (entry) => entry.username === button.dataset.demo,
-      );
-      document.getElementById("username").value = account.username;
-      passwordInput.value = account.password;
-    });
-  });
 }
 
 // The red glow on the login screen follows the mouse.
@@ -443,9 +504,14 @@ function setupLogout() {
   const link = document.getElementById("logoutLink");
   if (!link) return;
 
-  link.addEventListener("click", () => {
-    sessionStorage.removeItem("userRole");
-    sessionStorage.removeItem("userName");
+  link.addEventListener("click", async (event) => {
+    event.preventDefault();
+    try {
+      await apiRequest("/api/session/logout/", { method: "POST" });
+      window.location.href = "/index.html";
+    } catch (error) {
+      showToast("Log out failed: " + error.message);
+    }
   });
 }
 
@@ -1256,7 +1322,7 @@ function setupDashboard() {
   });
   document.getElementById("dashGreeting").textContent =
     "Welcome back, " +
-    sessionStorage.getItem("userName") +
+    appUser.name +
     ". Today is " +
     today +
     ".";
@@ -1313,7 +1379,9 @@ function setupDashboard() {
   renderLowStock(items);
 
   // Admin-only button to restore the sample data before a demo
-  document.getElementById("resetDataBtn").addEventListener("click", () => {
+  document
+    .getElementById("resetDataBtn")
+    .addEventListener("click", async () => {
     if (!isAdmin()) return;
     if (
       !window.confirm(
@@ -1322,14 +1390,19 @@ function setupDashboard() {
     )
       return;
 
-    localStorage.removeItem(KEYS.inventory);
-    localStorage.removeItem(KEYS.officers);
-    localStorage.removeItem(KEYS.activity);
-    localStorage.removeItem(KEYS.events);
-    localStorage.removeItem(KEYS.changelog);
+    saveData(KEYS.inventory, JSON.parse(JSON.stringify(DEFAULT_INVENTORY)));
+    saveData(KEYS.officers, JSON.parse(JSON.stringify(DEFAULT_OFFICERS)));
+    saveData(KEYS.activity, []);
+    saveData(KEYS.events, JSON.parse(JSON.stringify(DEFAULT_EVENTS)));
+    saveData(KEYS.changelog, []);
     // Start the fresh log with who did the reset
     writeChangeLog("system", "reset", "Demo data reset", []);
-    window.location.reload();
+    try {
+      await flushPendingWrites();
+      window.location.reload();
+    } catch (error) {
+      showToast("Reset failed: " + error.message);
+    }
   });
 }
 
@@ -1671,8 +1744,8 @@ function renderUpcomingEvents() {
 
 // ============================================================
 // J. BACKUP & RESTORE (JSON)
-// Everything lives in this browser's localStorage, so clearing site data
-// wipes it. "Download backup" saves a .json file; "Restore" loads one back.
+// The server stores app data. "Download backup" saves a .json file;
+// "Restore" imports one into the server.
 // A restore REPLACES the current data, so we validate the file first and
 // ask for confirmation.
 // ============================================================
@@ -1883,7 +1956,7 @@ function setupBackupPanel() {
 
     const reader = new FileReader();
     reader.onerror = () => showStatus("Couldn't read that file.");
-    reader.onload = () => {
+    reader.onload = async () => {
       let backup;
       try {
         backup = JSON.parse(reader.result);
@@ -1932,8 +2005,13 @@ function setupBackupPanel() {
         },
       ]);
 
-      sessionStorage.setItem("itpc_flash", "Backup restored.");
-      window.location.reload();
+      try {
+        await flushPendingWrites();
+        sessionStorage.setItem("itpc_flash", "Backup restored.");
+        window.location.reload();
+      } catch (error) {
+        showStatus("Restore failed: " + error.message);
+      }
     };
     reader.readAsText(file);
   });
@@ -1984,7 +2062,7 @@ function setupReportPage() {
     "Generated " +
     new Date().toLocaleString([], { dateStyle: "long", timeStyle: "short" }) +
     " by " +
-    (sessionStorage.getItem("userName") || "Guest");
+    (appUser && appUser.name) || "Guest";
 
   const stats = [
     ["Inventory items", items.length],
@@ -2286,7 +2364,26 @@ function setupThemeToggle() {
 // ============================================================
 // START — runs once the page's HTML has loaded
 // ============================================================
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
+  try {
+    if (!(await initializeBackend())) return;
+  } catch (error) {
+    const loginError = document.getElementById("loginError");
+    const mainContent = document.querySelector(".main-content");
+    const message = "Could not connect to the ERP server: " + error.message;
+    if (loginError) {
+      loginError.textContent = message;
+      loginError.hidden = false;
+    } else if (mainContent) {
+      const notice = document.createElement("p");
+      notice.className = "form-error";
+      notice.setAttribute("role", "alert");
+      notice.textContent = message;
+      mainContent.prepend(notice);
+    }
+    return;
+  }
+
   requireLogin();
   applyRole();
   showUserInSidebar();
